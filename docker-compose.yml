@@ -1,0 +1,21 @@
+# Local PostgreSQL — matches default values in `.env`
+# Usage: docker compose up -d
+# Stop:  docker compose down
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: schools_platform_db
+    restart: unless-stopped
+    # Change the left port if 5434 is taken on your machine (e.g. '5435:5432').
+    ports:
+      - '5434:5432'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: schools_platform
+    volumes:
+      - schools_pg_data:/var/lib/postgresql/data
+
+volumes:
+  schools_pg_data:
