@@ -11,7 +11,6 @@ import {
     UseInterceptors,
     UploadedFile,
     BadRequestException,
-    ForbiddenException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -28,7 +27,6 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { BulkCreateUsersDto } from './dto/bulk-create-users.dto';
-import { LinkParentStudentDto } from './dto/link-parent-student.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
@@ -149,42 +147,5 @@ export class UsersController {
     @ApiOperation({ summary: 'Soft delete a user' })
     remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() caller: AuthCaller) {
         return this.usersService.remove(id, caller);
-    }
-
-    // ─── Parent-Student linking ───────────────────────────────────────────────
-
-    @Post(':parentId/children')
-    @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
-    @ApiOperation({ summary: 'Link a student to a parent' })
-    linkChild(
-        @Param('parentId', ParseUUIDPipe) parentId: string,
-        @Body() dto: LinkParentStudentDto,
-        @CurrentUser() caller: AuthCaller,
-    ) {
-        return this.usersService.linkParentToStudent(parentId, dto, caller);
-    }
-
-    @Get(':parentId/children')
-    @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PARENT)
-    @ApiOperation({ summary: "Get parent's linked children" })
-    getChildren(
-        @Param('parentId', ParseUUIDPipe) parentId: string,
-        @CurrentUser() user: AuthCaller,
-    ) {
-        if (user.role === UserRole.PARENT && parentId !== user.id) {
-            throw new ForbiddenException('You can only view your own children');
-        }
-        return this.usersService.getParentChildren(parentId);
-    }
-
-    @Delete(':parentId/children/:studentId')
-    @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
-    @ApiOperation({ summary: 'Unlink a student from a parent' })
-    unlinkChild(
-        @Param('parentId', ParseUUIDPipe) parentId: string,
-        @Param('studentId', ParseUUIDPipe) studentId: string,
-        @CurrentUser() caller: AuthCaller,
-    ) {
-        return this.usersService.unlinkParentFromStudent(parentId, studentId, caller);
     }
 }

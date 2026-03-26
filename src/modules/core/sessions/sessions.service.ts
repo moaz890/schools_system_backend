@@ -12,6 +12,7 @@ import { SessionAccessPolicy } from './policies/session-access.policy';
 import type { AuthCaller } from '../users/types/auth-caller.type';
 import { MAX_SESSIONS_PER_USER } from './constants';
 import { AppLoggerService } from '../logger/logger.service';
+import { AuthSecurityAuditService } from '../audit/services/auth-security-audit.service';
 
 export type SessionListItem = Pick<
     Session,
@@ -23,6 +24,11 @@ export type SessionListItem = Pick<
     | 'createdAt'
 >;
 
+/** Result of matching a presented refresh token against stored session hashes. */
+export type RefreshSessionResolution =
+    | { kind: 'current'; session: Session }
+    | { kind: 'reuse'; session: Session };
+
 /**
  * Refresh-token session lifecycle: create, list, revoke, and auth integration.
  */
@@ -33,6 +39,7 @@ export class SessionsService {
         private readonly sessionsRepository: Repository<Session>,
         private readonly sessionAccessPolicy: SessionAccessPolicy,
         private readonly logger: AppLoggerService,
+        private readonly securityAudit: AuthSecurityAuditService,
     ) {}
 
     // ─── HTTP API (multi-device tracking) ───────────────────────────────────
@@ -60,6 +67,7 @@ export class SessionsService {
     async revokeSession(sessionId: string, caller: AuthCaller): Promise<void> {
         const session = await this.sessionsRepository.findOne({
             where: { id: sessionId } as any,
+            relations: ['user', 'user.school'],
         });
         if (!session) {
             throw new NotFoundException('Session not found');
@@ -73,6 +81,14 @@ export class SessionsService {
             sessionId,
             actorUserId: caller.id,
             actorSchoolId: caller.schoolId,
+        });
+
+        await this.securityAudit.recordSessionRevoked({
+            sessionUserId: session.userId,
+            schoolId: (session as any).user?.schoolId ?? caller.schoolId ?? null,
+            actorUserId: caller.id,
+            ipAddress: session.ipAddress,
+            userAgent: session.deviceInfo,
         });
     }
 
@@ -146,15 +162,33 @@ export class SessionsService {
         return this.sessionsRepository.find({ where: { userId } as any });
     }
 
-    async findMatchingRefreshSession(
+    /**
+     * Resolves a refresh token against this user's sessions: current hash first, then
+     * `previousTokenHash` (post-rotation replay → reuse detection).
+     */
+    async resolveRefreshSessionForUser(
         userId: string,
         plainRefreshToken: string,
-    ): Promise<Session | null> {
+    ): Promise<RefreshSessionResolution | null> {
         const sessions = await this.findSessionsByUserId(userId);
         for (const session of sessions) {
-            const matches = await bcrypt.compare(plainRefreshToken, session.token);
-            if (matches) {
-                return session;
+            const matchesCurrent = await bcrypt.compare(
+                plainRefreshToken,
+                session.token,
+            );
+            if (matchesCurrent) {
+                return { kind: 'current', session };
+            }
+        }
+        for (const session of sessions) {
+            if (session.previousTokenHash) {
+                const matchesPrev = await bcrypt.compare(
+                    plainRefreshToken,
+                    session.previousTokenHash,
+                );
+                if (matchesPrev) {
+                    return { kind: 'reuse', session };
+                }
             }
         }
         return null;
@@ -172,10 +206,20 @@ export class SessionsService {
         sessionId: string,
         newPlainRefreshToken: string,
     ): Promise<void> {
+        const session = await this.sessionsRepository.findOne({
+            where: { id: sessionId } as any,
+        });
+        if (!session) {
+            throw new UnauthorizedException('Session expired or revoked');
+        }
         const hashedNew = await bcrypt.hash(newPlainRefreshToken, 10);
         await this.sessionsRepository.update(
             { id: sessionId } as any,
-            { token: hashedNew, lastActive: new Date() } as any,
+            {
+                previousTokenHash: session.token,
+                token: hashedNew,
+                lastActive: new Date(),
+            } as any,
         );
     }
 

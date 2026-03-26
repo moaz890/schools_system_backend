@@ -12,7 +12,11 @@ export class Session extends BaseEntity {
     user: User;
 
     @Column({ type: 'text' })
-    token: string; // hashed refresh token
+    token: string; // hashed refresh token (current)
+
+    /** Bcrypt hash of the refresh token before last rotation; used for reuse detection. */
+    @Column({ name: 'previous_token_hash', type: 'text', nullable: true })
+    previousTokenHash: string | null;
 
     @Column({ name: 'device_info', type: 'varchar', length: 200, nullable: true })
     deviceInfo: string | null;

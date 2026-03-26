@@ -9,7 +9,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AuthService } from './auth.service';
+import { AuthService } from './services/auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -41,8 +41,10 @@ export class AuthController {
     @Throttle({ default: { limit: 10, ttl: 60000 } })
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Refresh access token using refresh token' })
-    refresh(@Body() dto: RefreshTokenDto) {
-        return this.authService.refresh(dto.refreshToken);
+    refresh(@Body() dto: RefreshTokenDto, @Req() req: any) {
+        const deviceInfo: string | undefined = req.headers['user-agent'] ?? undefined;
+        const ipAddress: string | undefined = req.ip ?? undefined;
+        return this.authService.refresh(dto.refreshToken, deviceInfo, ipAddress);
     }
 
     @Post('forgot-password')
@@ -54,8 +56,10 @@ export class AuthController {
         description:
             'Always returns the same message whether the email exists or not. School users must send schoolCode (same as login).',
     })
-    forgotPassword(@Body() dto: ForgotPasswordDto) {
-        return this.authService.forgotPassword(dto);
+    forgotPassword(@Body() dto: ForgotPasswordDto, @Req() req: any) {
+        const deviceInfo: string | undefined = req.headers['user-agent'] ?? undefined;
+        const ipAddress: string | undefined = req.ip ?? undefined;
+        return this.authService.forgotPassword(dto, deviceInfo, ipAddress);
     }
 
     @Post('reset-password')
@@ -66,23 +70,29 @@ export class AuthController {
         summary: 'Complete password reset using token from email link',
         description: 'Use userId and token from the frontend reset page query string.',
     })
-    resetPassword(@Body() dto: ResetPasswordDto) {
-        return this.authService.resetPassword(dto);
+    resetPassword(@Body() dto: ResetPasswordDto, @Req() req: any) {
+        const deviceInfo: string | undefined = req.headers['user-agent'] ?? undefined;
+        const ipAddress: string | undefined = req.ip ?? undefined;
+        return this.authService.resetPassword(dto, deviceInfo, ipAddress);
     }
 
     @Post('logout')
     @HttpCode(HttpStatus.OK)
     @ApiBearerAuth('access-token')
     @ApiOperation({ summary: 'Logout and revoke current session' })
-    logout(@CurrentUser() user: any, @Body() dto: RefreshTokenDto) {
-        return this.authService.logout(user.id, dto.refreshToken);
+    logout(@CurrentUser() user: any, @Body() dto: RefreshTokenDto, @Req() req: any) {
+        const deviceInfo: string | undefined = req.headers['user-agent'] ?? undefined;
+        const ipAddress: string | undefined = req.ip ?? undefined;
+        return this.authService.logout(user.id, dto.refreshToken, deviceInfo, ipAddress);
     }
 
     @Post('change-password')
     @HttpCode(HttpStatus.OK)
     @ApiBearerAuth('access-token')
     @ApiOperation({ summary: 'Change own password (invalidates all sessions)' })
-    changePassword(@CurrentUser() user: any, @Body() dto: ChangePasswordDto) {
-        return this.authService.changePassword(user.id, dto);
+    changePassword(@CurrentUser() user: any, @Body() dto: ChangePasswordDto, @Req() req: any) {
+        const deviceInfo: string | undefined = req.headers['user-agent'] ?? undefined;
+        const ipAddress: string | undefined = req.ip ?? undefined;
+        return this.authService.changePassword(user.id, dto, deviceInfo, ipAddress);
     }
 }

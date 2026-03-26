@@ -66,6 +66,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
         const tokenCredentialVersion = payload.cv ?? 1;
         const currentCredentialVersion = user.credentialVersion ?? 1;
+        
         if (tokenCredentialVersion !== currentCredentialVersion) {
             throw new UnauthorizedException('Credentials changed. Please sign in again.');
         }
