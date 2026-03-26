@@ -120,12 +120,6 @@ export class AuthService {
                 { userId: user.id, schoolId: user.schoolId ?? null },
                 client,
             );
-            this.logger.warn('AuthService', 'Invalid login password', {
-                loggerId: 'AUTH-LOGIN-002',
-                userId: user.id,
-                schoolId: user.schoolId,
-                email: loginDto.email,
-            });
             throw new UnauthorizedException('Invalid email or password');
         }
 
@@ -138,11 +132,6 @@ export class AuthService {
             ipAddress,
         });
 
-        this.logger.log('AuthService', 'Login succeeded', {
-            loggerId: 'AUTH-LOGIN-003',
-            userId: user.id,
-            schoolId: user.schoolId,
-        });
         await this.securityAudit.recordLoginSuccess(
             user.id,
             user.schoolId ?? null,
@@ -206,9 +195,6 @@ export class AuthService {
                 { actorUserId: null, schoolId: null },
                 client,
             );
-            this.logger.warn('AuthService', 'Refresh token verification failed', {
-                loggerId: 'AUTH-REFRESH-001',
-            });
             throw new UnauthorizedException('Invalid or expired refresh token');
         }
 
@@ -229,10 +215,6 @@ export class AuthService {
                 },
                 client,
             );
-            this.logger.warn('AuthService', 'Refresh token not matched to any session', {
-                loggerId: 'AUTH-REFRESH-002',
-                userId: payload.sub,
-            });
             throw new UnauthorizedException('Invalid or expired refresh token');
         }
 
@@ -246,11 +228,7 @@ export class AuthService {
                 client,
                 { sessionId: resolved.session.id },
             );
-            this.logger.warn('AuthService', 'Refresh token reuse detected; all sessions revoked', {
-                loggerId: 'AUTH-REFRESH-REUSE-001',
-                userId: payload.sub,
-                sessionId: resolved.session.id,
-            });
+            
             throw new UnauthorizedException('Invalid or expired refresh token');
         }
 
