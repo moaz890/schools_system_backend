@@ -6,39 +6,43 @@ import {
     IsString,
     IsUUID,
     Length,
-    MaxLength,
+    ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { NationalIdType } from '../entities/user.entity';
+import { UserRole } from '../../../../common/enums/user-role.enum';
+import { LocalizedStringDto } from '../../../../common/i18n/localized-string.dto';
 
-/** Super admin only — always creates a `school_admin` user (role is not sent in the body). */
 export class CreateUserDto {
-    @ApiProperty({ description: 'School this admin belongs to' })
+    @ApiProperty({ description: 'School this user belongs to' })
     @IsNotEmpty()
     @IsUUID('4')
     schoolId: string;
 
-    @ApiProperty({ example: 'admin@school.com' })
+    @ApiProperty({ description: 'Role to assign', enum: UserRole })
+    @IsNotEmpty()
+    @IsEnum(UserRole)
+    role: UserRole;
+
+    @ApiProperty({ example: 'user@school.com' })
     @IsNotEmpty()
     @IsEmail()
     email: string;
 
-    @ApiProperty({ example: 'Ahmed' })
+    @ApiProperty({
+        type: LocalizedStringDto,
+        description: 'Full name in en/ar. Example: { en: "Ahmed Rashid", ar: "أحمد راشد" }',
+    })
     @IsNotEmpty()
-    @IsString()
-    @MaxLength(50)
-    firstName: string;
-
-    @ApiProperty({ example: 'Al-Rashid' })
-    @IsNotEmpty()
-    @IsString()
-    @MaxLength(50)
-    lastName: string;
+    @ValidateNested()
+    @Type(() => LocalizedStringDto)
+    name: LocalizedStringDto;
 
     @ApiPropertyOptional({ example: '+966501234567' })
     @IsOptional()
     @IsString()
-    @MaxLength(20)
+    @Length(0, 20)
     phone?: string;
 
     @ApiProperty({ example: '1234567890', description: 'National ID / Passport / Iqama number' })

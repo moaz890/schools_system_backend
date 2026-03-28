@@ -22,6 +22,6 @@ import { UsersProfileService } from './services/users-profile.service';
         UsersQueryService,
         UsersProfileService,
     ],
-    exports: [UsersService, TypeOrmModule], // export TypeOrmModule so School analytics can use UserRepo
+    exports: [UsersService, UsersCreateService, TypeOrmModule], // UsersCreateService exported for other modules
 })
 export class UsersModule { }

@@ -17,13 +17,13 @@ export class UsersService {
         private readonly createService: UsersCreateService,
         private readonly queryService: UsersQueryService,
         private readonly profileService: UsersProfileService,
-    ) {}
+    ) { }
 
     async create(
         dto: CreateUserDto,
         caller: AuthCaller,
     ): Promise<{ user: User; plainPassword: string }> {
-        return this.createService.createSchoolAdmin(dto, caller);
+        return this.createService.createViaApi(dto, caller.id, caller.role);
     }
 
     async bulkCreate(
@@ -33,7 +33,16 @@ export class UsersService {
         created: Array<{ user: User; plainPassword: string }>;
         failed: Array<{ index: number; email: string; reason: string }>;
     }> {
-        return this.createService.bulkCreate(dto, caller);
+        const users = dto.users.map((u) => ({
+            schoolId: u.schoolId,
+            role: u.role as Exclude<UserRole, UserRole.SUPER_ADMIN>,
+            email: u.email,
+            name: u.name,
+            phone: u.phone,
+            nationalId: u.nationalId,
+            nationalIdType: u.nationalIdType,
+        }));
+        return this.createService.bulkCreate(users, caller.role, caller.id);
     }
 
     async findAll(

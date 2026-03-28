@@ -31,7 +31,7 @@ export class AuthService {
         private configService: ConfigService,
         private securityAudit: AuthSecurityAuditService,
         private passwordService: AuthPasswordService,
-    ) {}
+    ) { }
 
     async login(
         loginDto: LoginDto,
@@ -144,8 +144,7 @@ export class AuthService {
             user: {
                 id: user.id,
                 email: user.email,
-                firstName: user.firstName,
-                lastName: user.lastName,
+                name: user.name,
                 role: user.role,
                 schoolId: user.schoolId,
                 schoolCode: user.school?.code ?? null,
@@ -228,7 +227,7 @@ export class AuthService {
                 client,
                 { sessionId: resolved.session.id },
             );
-            
+
             throw new UnauthorizedException('Invalid or expired refresh token');
         }
 

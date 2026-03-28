@@ -30,7 +30,7 @@ export class AuthPasswordService {
         private readonly configService: ConfigService,
         private readonly emailService: EmailService,
         private readonly securityAudit: AuthSecurityAuditService,
-    ) {}
+    ) { }
 
     async changePassword(
         userId: string,
@@ -126,7 +126,7 @@ export class AuthPasswordService {
                 await this.emailService.sendPasswordReset({
                     to: user.email,
                     resetUrl,
-                    firstName: user.firstName,
+                    name: user.name?.en ?? user.email,
                     userId: user.id,
                     schoolId: user.schoolId,
                 });

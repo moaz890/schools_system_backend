@@ -10,7 +10,7 @@ export class UsersDalService {
     constructor(
         @InjectRepository(User)
         private readonly usersRepository: Repository<User>,
-    ) {}
+    ) { }
 
     async findEmailAndSchool(email: string, schoolId: string): Promise<User | null> {
         return this.usersRepository.findOne({
@@ -44,8 +44,7 @@ export class UsersDalService {
             select: [
                 'id',
                 'email',
-                'firstName',
-                'lastName',
+                'name',
                 'role',
                 'status',
                 'phone',
@@ -86,8 +85,7 @@ export class UsersDalService {
         qb.select([
             'user.id',
             'user.email',
-            'user.firstName',
-            'user.lastName',
+            'user.name',
             'user.role',
             'user.status',
             'user.phone',

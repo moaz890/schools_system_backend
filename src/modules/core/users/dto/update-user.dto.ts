@@ -1,24 +1,20 @@
-import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEnum, IsOptional, IsString, Length, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { AccountStatus } from '../../../../common/enums/account-status.enum';
+import { LocalizedStringDto } from '../../../../common/i18n/localized-string.dto';
 
 export class UpdateUserDto {
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({ type: LocalizedStringDto })
     @IsOptional()
-    @IsString()
-    @MaxLength(50)
-    firstName?: string;
+    @ValidateNested()
+    @Type(() => LocalizedStringDto)
+    name?: LocalizedStringDto;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
-    @MaxLength(50)
-    lastName?: string;
-
-    @ApiPropertyOptional()
-    @IsOptional()
-    @IsString()
-    @MaxLength(20)
+    @Length(0, 20)
     phone?: string;
 
     @ApiPropertyOptional({ enum: AccountStatus })
@@ -29,36 +25,6 @@ export class UpdateUserDto {
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
-    @MaxLength(20)
-    nationalId?: string;
-
-    @ApiPropertyOptional()
-    @IsOptional()
-    @IsString()
-    @MaxLength(20)
-    nationalIdType?: string;
-
-    @ApiPropertyOptional()
-    @IsOptional()
-    @IsString()
-    @MaxLength(20)
-    avatarUrl?: string;
-
-    @ApiPropertyOptional()
-    @IsOptional()
-    @IsString()
-    @MaxLength(20)
-    passwordHash?: string;
-
-    @ApiPropertyOptional()
-    @IsOptional()
-    @IsString()
-    @MaxLength(150)
+    @Length(0, 150)
     email?: string;
-
-    @ApiPropertyOptional()
-    @IsOptional()
-    @IsString()
-    @MaxLength(20)
-    role?: string;
 }

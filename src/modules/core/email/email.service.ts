@@ -10,7 +10,7 @@ export class EmailService {
     constructor(
         private readonly configService: ConfigService,
         private readonly logger: AppLoggerService,
-    ) {}
+    ) { }
 
     /**
      * Sends password reset via Brevo transactional email API when `mail.enabled` is true.
@@ -18,14 +18,14 @@ export class EmailService {
     async sendPasswordReset(params: {
         to: string;
         resetUrl: string;
-        firstName: string;
+        name: string;
         userId: string;
         schoolId: string | null;
     }): Promise<void> {
         const enabled = this.configService.get<boolean>('mail.enabled');
         const subject = 'Reset your password';
         const text = [
-            `Hello ${params.firstName},`,
+            `Hello ${params.name},`,
             '',
             `Reset your password using this link (valid for a limited time):`,
             params.resetUrl,
@@ -33,7 +33,7 @@ export class EmailService {
             'If you did not request a password reset, you can ignore this email.',
         ].join('\n');
 
-        const safeName = escapeHtml(params.firstName);
+        const safeName = escapeHtml(params.name);
         const html = `
 <p>Hello ${safeName},</p>
 <p><a href="${escapeHtml(params.resetUrl)}">Reset your password</a></p>
@@ -57,7 +57,7 @@ export class EmailService {
 
         const payload = {
             sender: { name: sender.name, email: sender.email },
-            to: [{ email: params.to, name: params.firstName }],
+            to: [{ email: params.to, name: params.name }],
             subject,
             htmlContent: html,
             textContent: text,

@@ -4,6 +4,7 @@ import { UserRole } from '../../../../common/enums/user-role.enum';
 import { AccountStatus } from '../../../../common/enums/account-status.enum';
 import { School } from '../../schools/entities/school.entity';
 import { Session } from '../../sessions/entities/session.entity';
+import type { LocalizedString } from '../../../../common/i18n/localized-string.type';
 
 export enum NationalIdType {
     NATIONAL_ID = 'national_id',   // Saudi national ID
@@ -37,11 +38,9 @@ export class User extends BaseEntity {
     @Column({ name: 'password_hash', type: 'varchar', length: 255 })
     passwordHash: string;
 
-    @Column({ name: 'first_name', type: 'varchar', length: 50 })
-    firstName: string;
-
-    @Column({ name: 'last_name', type: 'varchar', length: 50 })
-    lastName: string;
+    /** Full name in Arabic and English. Example: { en: "Ahmed Rashid", ar: "أحمد راشد" } */
+    @Column({ name: 'name', type: 'jsonb' })
+    name: LocalizedString;
 
     @Column({ type: 'varchar', length: 20, nullable: true })
     phone: string | null;

@@ -75,6 +75,27 @@ async function main() {
     );
     console.log(`Deleted ${delUsers.rowCount ?? 0} seed user row(s).`);
 
+    // Look up school IDs for stage/grade cleanup
+    const schoolIdsRes = await client.query(
+        `SELECT id FROM schools WHERE code = ANY($1::text[]) AND deleted_at IS NULL`,
+        [schoolCodes],
+    );
+    const schoolIds = schoolIdsRes.rows.map((r) => String(r.id));
+
+    if (schoolIds.length > 0) {
+        const delGrades = await client.query(
+            `DELETE FROM grade_levels WHERE school_id = ANY($1::uuid[])`,
+            [schoolIds],
+        );
+        console.log(`Deleted ${delGrades.rowCount ?? 0} seed grade level row(s).`);
+
+        const delStages = await client.query(
+            `DELETE FROM stages WHERE school_id = ANY($1::uuid[])`,
+            [schoolIds],
+        );
+        console.log(`Deleted ${delStages.rowCount ?? 0} seed stage row(s).`);
+    }
+
     const delSchools = await client.query(
         `DELETE FROM schools WHERE code = ANY($1::text[]) AND deleted_at IS NULL`,
         [schoolCodes],

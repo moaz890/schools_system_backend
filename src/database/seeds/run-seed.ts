@@ -13,7 +13,9 @@ import * as bcrypt from 'bcrypt';
 import {
     SEED_ADMINS,
     SEED_DEFAULT_PASSWORD,
+    SEED_GRADE_LEVELS,
     SEED_SCHOOLS,
+    SEED_STAGES,
     SEED_SUPER_ADMIN,
 } from './seed-data';
 
@@ -101,19 +103,18 @@ Create the schema first, then run this script again:
     } else {
         await client.query(
             `INSERT INTO users (
-          school_id, email, password_hash, first_name, last_name, phone,
+          school_id, email, password_hash, name, phone,
           role, status, national_id, national_id_type,
           failed_login_attempts, locked_until, created_at, updated_at
         ) VALUES (
-          NULL, $1, $2, $3, $4, NULL,
-          'super_admin', 'active', $5, 'national_id',
+          NULL, $1, $2, $3::jsonb, NULL,
+          'super_admin', 'active', $4, 'national_id',
           0, NULL, NOW(), NOW()
         )`,
             [
                 SEED_SUPER_ADMIN.email,
                 passwordHash,
-                SEED_SUPER_ADMIN.firstName,
-                SEED_SUPER_ADMIN.lastName,
+                JSON.stringify(SEED_SUPER_ADMIN.name),
                 SEED_SUPER_ADMIN.nationalId,
             ],
         );
@@ -151,20 +152,19 @@ Create the schema first, then run this script again:
 
         await client.query(
             `INSERT INTO users (
-          school_id, email, password_hash, first_name, last_name, phone,
+          school_id, email, password_hash, name, phone,
           role, status, national_id, national_id_type,
           failed_login_attempts, locked_until, created_at, updated_at
         ) VALUES (
-          $1, $2, $3, $4, $5, NULL,
-          'school_admin', 'active', $6, 'national_id',
+          $1, $2, $3, $4::jsonb, NULL,
+          'school_admin', 'active', $5, 'national_id',
           0, NULL, NOW(), NOW()
         )`,
             [
                 schoolId,
                 a.email,
                 passwordHash,
-                a.firstName,
-                a.lastName,
+                JSON.stringify(a.name),
                 a.nationalId,
             ],
         );
@@ -172,6 +172,81 @@ Create the schema first, then run this script again:
             `Created school_admin ${a.email} for ${a.schoolCode} (school_id=${schoolId})`,
         );
     }
+
+    // ─── Seed Stages ─────────────────────────────────────────────────────────
+
+    // stageKey → stage_id map for grade level seeding
+    const stageKeyToId = new Map<string, string>();
+
+    for (const s of SEED_STAGES) {
+        const schoolId = codeToSchoolId.get(s.schoolCode);
+        if (!schoolId) {
+            console.error(`Unknown school code for stage: ${s.schoolCode}`);
+            continue;
+        }
+
+        const existing = await client.query(
+            `SELECT id FROM stages WHERE school_id = $1 AND "order" = $2 AND deleted_at IS NULL`,
+            [schoolId, s.order],
+        );
+        if (existing.rows.length > 0) {
+            const id = String(existing.rows[0].id);
+            stageKeyToId.set(`${s.schoolCode}:${s.name.en}`, id);
+            console.log(`Stage "${s.name.en}" (${s.schoolCode}) already exists, skipping.`);
+            continue;
+        }
+
+        const ins = await client.query(
+            `INSERT INTO stages (school_id, name, "order", max_grades, is_kindergarten, grade_name_prefix, created_at, updated_at)
+       VALUES ($1, $2::jsonb, $3, $4, $5, $6::jsonb, NOW(), NOW())
+       RETURNING id`,
+            [
+                schoolId,
+                JSON.stringify(s.name),
+                s.order,
+                s.maxGrades,
+                s.isKindergarten,
+                s.gradeNamePrefix ? JSON.stringify(s.gradeNamePrefix) : null,
+            ],
+        );
+        const id = String(ins.rows[0].id);
+        stageKeyToId.set(`${s.schoolCode}:${s.name.en}`, id);
+        console.log(`Created stage "${s.name.en}" (${s.schoolCode}) id=${id}`);
+    }
+
+    // ─── Seed Grade Levels ───────────────────────────────────────────────────
+
+    for (const g of SEED_GRADE_LEVELS) {
+        const schoolId = codeToSchoolId.get(g.schoolCode);
+        if (!schoolId) {
+            console.error(`Unknown school code for grade: ${g.schoolCode}`);
+            continue;
+        }
+
+        const stageId = stageKeyToId.get(`${g.schoolCode}:${g.stageName}`);
+        if (!stageId) {
+            console.error(`Stage "${g.stageName}" not found for ${g.schoolCode}`);
+            continue;
+        }
+
+        const existing = await client.query(
+            `SELECT id FROM grade_levels WHERE stage_id = $1 AND "order" = $2 AND deleted_at IS NULL`,
+            [stageId, g.order],
+        );
+        if (existing.rows.length > 0) {
+            console.log(`Grade "${g.name.en}" (${g.schoolCode}/${g.stageName}) exists, skipping.`);
+            continue;
+        }
+
+        await client.query(
+            `INSERT INTO grade_levels (school_id, stage_id, name, "order", created_at, updated_at)
+       VALUES ($1, $2, $3::jsonb, $4, NOW(), NOW())`,
+            [schoolId, stageId, JSON.stringify(g.name), g.order],
+        );
+        console.log(`Created grade "${g.name.en}" in ${g.stageName} (${g.schoolCode})`);
+    }
+
+    // ─── Summary ─────────────────────────────────────────────────────────────
 
     console.log('\n--- Login (POST /api/v1/auth/login) ---');
     console.log(
