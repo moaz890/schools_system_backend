@@ -30,7 +30,7 @@ export class AcademicYearSemestersController {
     }
 
     @Get(':yearId/semesters')
-    @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+    @Roles(UserRole.SCHOOL_ADMIN)
     @ApiOperation({ summary: 'List semesters for an academic year' })
     list(
         @Param('yearId', ParseUUIDPipe) yearId: string,

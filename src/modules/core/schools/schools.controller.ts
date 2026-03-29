@@ -24,7 +24,7 @@ import {
 import { SchoolsService } from './schools.service';
 import { CreateSchoolDto } from './dto/create-school.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
-import { UpdateSchoolSettingsDto } from './dto/update-school-settings.dto';
+
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
@@ -116,17 +116,8 @@ export class SchoolsController {
         return this.schoolsService.update(id, updateSchoolDto, logoUrl);
     }
 
-    @Patch(':id/settings')
-    @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
-    @ApiOperation({ summary: 'Update school settings (JSON patch) (Super and School Admins)' })
-    updateSettings(
-        @Param('id', ParseUUIDPipe) id: string,
-        @Body() settingsDto: UpdateSchoolSettingsDto,
-        @CurrentUser() user: { role: string; schoolId: string | null },
-    ) {
-        this.assertSchoolScope(user, id);
-        return this.schoolsService.updateSettings(id, settingsDto);
-    }
+
+
 
     @Post(':id/logo')
     @Roles(UserRole.SUPER_ADMIN)

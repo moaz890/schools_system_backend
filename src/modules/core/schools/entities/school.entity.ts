@@ -1,36 +1,20 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, OneToOne } from 'typeorm';
 import { BaseEntity } from '../../../../common/entities/base.entity';
-
-export interface SchoolSettings {
-    gradingScale: 'letter' | 'percentage' | 'gpa';
-    allowLateSubmissions: boolean;
-    maxLoginAttempts: number;
-    lockoutDurationMinutes: number;
-    academicYearStartMonth: number; // 1-12
-}
-
-const defaultSettings: SchoolSettings = {
-    gradingScale: 'letter',
-    allowLateSubmissions: true,
-    maxLoginAttempts: 5,
-    lockoutDurationMinutes: 30,
-    academicYearStartMonth: 9,
-};
+import { SchoolStrategy } from '../../school-strategies/entities/school-strategy.entity';
 
 @Entity('schools')
 export class School extends BaseEntity {
     @Column({ type: 'varchar', length: 100 })
     name: string;
 
-    /** Explicit varchar so TypeORM does not infer `Object` from `string | null` union (reflect-metadata). */
+    /** Unique non-deleted school code (see migration for partial index). */
     @Column({ type: 'varchar', length: 20, unique: true })
     code: string;
 
-    /** Unique among non-deleted rows — enforced by partial index in migrations. */
     @Column({ type: 'varchar', length: 100 })
     email: string;
 
-    @Column({ type: 'varchar', length: 20})
+    @Column({ type: 'varchar', length: 20 })
     phone: string;
 
     @Column({ type: 'text' })
@@ -51,9 +35,7 @@ export class School extends BaseEntity {
     @Column({ name: 'is_active', type: 'boolean', default: true })
     isActive: boolean;
 
-    @Column({
-        type: 'jsonb',
-        default: defaultSettings,
-    })
-    settings: SchoolSettings;
+    /** Loaded on demand via JOIN — use SchoolStrategiesService to read/write. */
+    @OneToOne(() => SchoolStrategy, (s) => s.school)
+    strategy?: SchoolStrategy;
 }

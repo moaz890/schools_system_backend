@@ -16,18 +16,12 @@ import {
     SEED_GRADE_LEVELS,
     SEED_SCHOOLS,
     SEED_STAGES,
+    SEED_STRATEGIES,
     SEED_SUPER_ADMIN,
 } from './seed-data';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
-const defaultSettingsJson = JSON.stringify({
-    gradingScale: 'letter',
-    allowLateSubmissions: true,
-    maxLoginAttempts: 5,
-    lockoutDurationMinutes: 30,
-    academicYearStartMonth: 9,
-});
 
 async function main() {
     const client = new Client({
@@ -68,22 +62,58 @@ Create the schema first, then run this script again:
             `SELECT id FROM schools WHERE code = $1 AND deleted_at IS NULL`,
             [s.code],
         );
+        let id: string;
         if (existing.rows.length > 0) {
-            const id = String(existing.rows[0].id);
+            id = String(existing.rows[0].id);
             codeToSchoolId.set(s.code, id);
             console.log(`School "${s.code}" already exists (id=${id}), skipping insert.`);
-            continue;
+        } else {
+            const ins = await client.query(
+                `INSERT INTO schools (name, code, email, phone, address, is_active, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, true, NOW(), NOW())
+           RETURNING id`,
+                [s.name, s.code, s.email, s.phone, 'Seed address'],
+            );
+            id = String(ins.rows[0].id);
+            codeToSchoolId.set(s.code, id);
+            console.log(`Created school "${s.name}" (${s.code}) id=${id}`);
         }
 
-        const ins = await client.query(
-            `INSERT INTO schools (name, code, email, phone, address, is_active, settings, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, true, $6::jsonb, NOW(), NOW())
-       RETURNING id`,
-            [s.name, s.code, s.email, s.phone, 'Seed address', defaultSettingsJson],
+
+        // Look up seed-specific strategy config for this school
+        const seedStrategy = SEED_STRATEGIES.find((st) => st.schoolCode === s.code);
+
+        // Upsert strategy — uses seed config if available, otherwise falls back to Egyptian defaults
+        await client.query(
+            `INSERT INTO school_strategies (
+                school_id, calculation_method, passing_threshold, enable_rounding,
+                decimal_places, must_pass_final_to_pass_subject, allow_resit,
+                max_failed_subjects_for_resit, promotion_policy, grade_descriptors
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
+             ON CONFLICT (school_id) DO UPDATE SET
+                calculation_method              = EXCLUDED.calculation_method,
+                passing_threshold               = EXCLUDED.passing_threshold,
+                enable_rounding                 = EXCLUDED.enable_rounding,
+                decimal_places                  = EXCLUDED.decimal_places,
+                must_pass_final_to_pass_subject = EXCLUDED.must_pass_final_to_pass_subject,
+                allow_resit                     = EXCLUDED.allow_resit,
+                max_failed_subjects_for_resit   = EXCLUDED.max_failed_subjects_for_resit,
+                promotion_policy                = EXCLUDED.promotion_policy,
+                grade_descriptors               = EXCLUDED.grade_descriptors,
+                updated_at                      = NOW()`,
+            [
+                id,
+                seedStrategy?.calculationMethod ?? 'CREDIT_HOURS',
+                seedStrategy?.passingThreshold ?? 50,
+                seedStrategy?.enableRounding ?? false,
+                seedStrategy?.decimalPlaces ?? 0,
+                seedStrategy?.mustPassFinalToPassSubject ?? true,
+                seedStrategy?.allowResit ?? true,
+                seedStrategy?.maxFailedSubjectsForResit ?? 2,
+                seedStrategy?.promotionPolicy ?? 'CONDITIONAL',
+                JSON.stringify(seedStrategy?.gradeDescriptors ?? []),
+            ],
         );
-        const id = String(ins.rows[0].id);
-        codeToSchoolId.set(s.code, id);
-        console.log(`Created school "${s.name}" (${s.code}) id=${id}`);
     }
 
     const superExists = await client.query(

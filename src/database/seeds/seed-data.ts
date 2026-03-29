@@ -26,7 +26,7 @@ export const SEED_SCHOOLS = [
     },
 ] as const;
 
-/** school_admin users — emails are unique per school. */
+/** One school_admin per school. */
 export const SEED_ADMINS = [
     {
         schoolCode: 'GREENHS',
@@ -35,22 +35,54 @@ export const SEED_ADMINS = [
         nationalId: 'SEED-NID-ADMIN-GREENHS-001',
     },
     {
-        schoolCode: 'GREENHS',
-        email: 'deputy@greenhs.test',
-        name: { en: 'Khalid Al-Fahad', ar: 'خالد الفهد' },
-        nationalId: 'SEED-NID-ADMIN-GREENHS-002',
-    },
-    {
         schoolCode: 'BLUEVA',
         email: 'admin@blueva.test',
         name: { en: 'Omar Al-Harbi', ar: 'عمر الحربي' },
         nationalId: 'SEED-NID-ADMIN-BLUEVA-001',
     },
+] as const;
+
+/**
+ * School strategies — one per school.
+ * GREENHS uses Egyptian MOE defaults (50% pass).
+ * BLUEVA uses Saudi MOE defaults (60% pass).
+ */
+export const SEED_STRATEGIES = [
+    {
+        schoolCode: 'GREENHS',
+        calculationMethod: 'CREDIT_HOURS',
+        passingThreshold: 50,
+        enableRounding: false,
+        decimalPlaces: 0,
+        mustPassFinalToPassSubject: true,
+        allowResit: true,
+        maxFailedSubjectsForResit: 2,
+        promotionPolicy: 'CONDITIONAL',
+        gradeDescriptors: [
+            { min: 85, max: 100, label: { en: 'Excellent', ar: 'ممتاز' } },
+            { min: 75, max: 84, label: { en: 'Very Good', ar: 'جيد جداً' } },
+            { min: 65, max: 74, label: { en: 'Good', ar: 'جيد' } },
+            { min: 50, max: 64, label: { en: 'Pass', ar: 'مقبول' } },
+            { min: 0, max: 49, label: { en: 'Fail', ar: 'ضعيف' } },
+        ],
+    },
     {
         schoolCode: 'BLUEVA',
-        email: 'deputy@blueva.test',
-        name: { en: 'Layla Al-Zahrani', ar: 'ليلى الزهراني' },
-        nationalId: 'SEED-NID-ADMIN-BLUEVA-002',
+        calculationMethod: 'CUMULATIVE_AVERAGE',
+        passingThreshold: 60,
+        enableRounding: true,
+        decimalPlaces: 1,
+        mustPassFinalToPassSubject: false,
+        allowResit: true,
+        maxFailedSubjectsForResit: 3,
+        promotionPolicy: 'CONDITIONAL',
+        gradeDescriptors: [
+            { min: 90, max: 100, label: { en: 'Excellent', ar: 'ممتاز' } },
+            { min: 80, max: 89, label: { en: 'Very Good', ar: 'جيد جداً' } },
+            { min: 70, max: 79, label: { en: 'Good', ar: 'جيد' } },
+            { min: 60, max: 69, label: { en: 'Pass', ar: 'مقبول' } },
+            { min: 0, max: 59, label: { en: 'Fail', ar: 'راسب' } },
+        ],
     },
 ] as const;
 

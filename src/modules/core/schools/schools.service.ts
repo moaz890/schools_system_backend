@@ -8,9 +8,9 @@ import { Repository } from 'typeorm';
 import { School } from './entities/school.entity';
 import { CreateSchoolDto } from './dto/create-school.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
-import { UpdateSchoolSettingsDto } from './dto/update-school-settings.dto';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import { AppLoggerService } from '../logger/logger.service';
+import { SchoolStrategiesService } from '../school-strategies/school-strategies.service';
 
 @Injectable()
 export class SchoolsService {
@@ -18,13 +18,13 @@ export class SchoolsService {
         @InjectRepository(School)
         private readonly schoolsRepository: Repository<School>,
         private readonly logger: AppLoggerService,
+        private readonly strategiesService: SchoolStrategiesService,
     ) { }
 
     async create(
         createSchoolDto: CreateSchoolDto,
         logoUrl?: string,
     ): Promise<School> {
-        // Check code uniqueness if provided
         if (createSchoolDto.code) {
             const existing = await this.schoolsRepository.findOne({
                 where: { code: createSchoolDto.code },
@@ -47,6 +47,10 @@ export class SchoolsService {
             school.logoUrl = logoUrl;
         }
         const created = await this.schoolsRepository.save(school);
+
+        // Auto-initialize strategy with Egyptian defaults
+        await this.strategiesService.initForSchool(created.id);
+
         this.logger.log('SchoolsService', 'School created', {
             loggerId: 'SCHOOL-CREATE-002',
             schoolId: created.id,
@@ -66,12 +70,7 @@ export class SchoolsService {
 
         return {
             data,
-            meta: {
-                page,
-                limit,
-                total,
-                totalPages: Math.ceil(total / limit),
-            },
+            meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
         };
     }
 
@@ -94,7 +93,6 @@ export class SchoolsService {
     ): Promise<School> {
         const school = await this.findOne(id);
 
-        // If updating code, check uniqueness
         if (updateSchoolDto.code && updateSchoolDto.code !== school.code) {
             const existing = await this.schoolsRepository.findOne({
                 where: { code: updateSchoolDto.code },
@@ -132,30 +130,15 @@ export class SchoolsService {
         });
     }
 
-    async updateSettings(
-        id: string,
-        settingsDto: UpdateSchoolSettingsDto,
-    ): Promise<School> {
-        const school = await this.findOne(id);
-        // Merge new settings with existing (patch behavior)
-        school.settings = { ...school.settings, ...settingsDto };
-        return this.schoolsRepository.save(school);
-    }
-
     async updateLogo(id: string, logoUrl: string): Promise<School> {
         const school = await this.findOne(id);
         school.logoUrl = logoUrl;
         return this.schoolsRepository.save(school);
     }
 
-    // ─── Analytics placeholder ────────────────────────────────────────────────
-    // Will be filled when students/teachers modules are built
     async getAnalytics() {
         const total = await this.schoolsRepository.count();
-        const active = await this.schoolsRepository.count({
-            where: { isActive: true },
-        });
-
+        const active = await this.schoolsRepository.count({ where: { isActive: true } });
         const schools = await this.schoolsRepository.find({
             select: ['name', 'code', 'isActive'] as any,
         });
@@ -171,8 +154,8 @@ export class SchoolsService {
                 name: s.name,
                 code: s.code,
                 isActive: s.isActive,
-                studentCount: null, // TODO
-                teacherCount: null, // TODO
+                studentCount: null,
+                teacherCount: null,
             })),
         };
     }

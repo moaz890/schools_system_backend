@@ -2,10 +2,10 @@ import { IsBoolean, IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator'
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateSchoolSettingsDto {
-    @ApiPropertyOptional({ enum: ['letter', 'percentage', 'gpa'] })
+    @ApiPropertyOptional({ enum: ['percentage', 'gpa'] })
     @IsOptional()
-    @IsEnum(['letter', 'percentage', 'gpa'])
-    gradingScale?: 'letter' | 'percentage' | 'gpa';
+    @IsEnum(['percentage', 'gpa'])
+    gradingScale?: 'percentage' | 'gpa';
 
     @ApiPropertyOptional()
     @IsOptional()

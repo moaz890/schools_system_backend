@@ -19,6 +19,7 @@ import { UsersModule } from './modules/core/users/users.module';
 import { LoggerModule } from './modules/core/logger/logger.module';
 import { AcademicYearsModule } from './modules/core/academic-years/academic-years.module';
 import { AcademicsModule } from './modules/academics/academics.module';
+import { SchoolStrategiesModule } from './modules/core/school-strategies/school-strategies.module';
 
 
 
@@ -48,6 +49,7 @@ import { AcademicsModule } from './modules/academics/academics.module';
     UsersModule,
     AcademicYearsModule,
     AcademicsModule,
+    SchoolStrategiesModule,
 
     // Coming soon:
     // AcademicsModule, LmsModule, AssessmentsModule
