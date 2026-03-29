@@ -1,7 +1,7 @@
 import {
-    Injectable,
-    NotFoundException,
-    ConflictException,
+  Injectable,
+  NotFoundException,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -14,149 +14,155 @@ import { SchoolStrategiesService } from '../school-strategies/school-strategies.
 
 @Injectable()
 export class SchoolsService {
-    constructor(
-        @InjectRepository(School)
-        private readonly schoolsRepository: Repository<School>,
-        private readonly logger: AppLoggerService,
-        private readonly strategiesService: SchoolStrategiesService,
-    ) { }
+  constructor(
+    @InjectRepository(School)
+    private readonly schoolsRepository: Repository<School>,
+    private readonly logger: AppLoggerService,
+    private readonly strategiesService: SchoolStrategiesService,
+  ) {}
 
-    async create(
-        createSchoolDto: CreateSchoolDto,
-        logoUrl?: string,
-    ): Promise<School> {
-        if (createSchoolDto.code) {
-            const existing = await this.schoolsRepository.findOne({
-                where: { code: createSchoolDto.code },
-                withDeleted: false,
-            });
-            if (existing) {
-                this.logger.warn('SchoolsService', 'School code conflict on create', {
-                    loggerId: 'SCHOOL-CREATE-001',
-                    code: createSchoolDto.code,
-                    email: createSchoolDto.email,
-                });
-                throw new ConflictException(
-                    `School with code "${createSchoolDto.code}" already exists`,
-                );
-            }
-        }
-
-        const school = this.schoolsRepository.create(createSchoolDto);
-        if (logoUrl) {
-            school.logoUrl = logoUrl;
-        }
-        const created = await this.schoolsRepository.save(school);
-
-        // Auto-initialize strategy with Egyptian defaults
-        await this.strategiesService.initForSchool(created.id);
-
-        this.logger.log('SchoolsService', 'School created', {
-            loggerId: 'SCHOOL-CREATE-002',
-            schoolId: created.id,
-            code: created.code,
+  async create(
+    createSchoolDto: CreateSchoolDto,
+    logoUrl?: string,
+  ): Promise<School> {
+    if (createSchoolDto.code) {
+      const existing = await this.schoolsRepository.findOne({
+        where: { code: createSchoolDto.code },
+        withDeleted: false,
+      });
+      if (existing) {
+        this.logger.warn('SchoolsService', 'School code conflict on create', {
+          loggerId: 'SCHOOL-CREATE-001',
+          code: createSchoolDto.code,
+          email: createSchoolDto.email,
         });
-        return created;
+        throw new ConflictException(
+          `School with code "${createSchoolDto.code}" already exists`,
+        );
+      }
     }
 
-    async findAll(pagination: PaginationDto): Promise<{ data: School[]; meta: any }> {
-        const page = pagination.page ?? 1;
-        const limit = pagination.limit ?? 10;
-        const [data, total] = await this.schoolsRepository.findAndCount({
-            skip: pagination.skip,
-            take: limit,
-            order: { createdAt: 'DESC' } as any,
+    const school = this.schoolsRepository.create(createSchoolDto);
+    if (logoUrl) {
+      school.logoUrl = logoUrl;
+    }
+    const created = await this.schoolsRepository.save(school);
+
+    // Auto-initialize strategy with Egyptian defaults
+    await this.strategiesService.initForSchool(created.id);
+
+    this.logger.log('SchoolsService', 'School created', {
+      loggerId: 'SCHOOL-CREATE-002',
+      schoolId: created.id,
+      code: created.code,
+    });
+    return created;
+  }
+
+  async findAll(
+    pagination: PaginationDto,
+  ): Promise<{ data: School[]; meta: any }> {
+    const page = pagination.page ?? 1;
+    const limit = pagination.limit ?? 10;
+    const [data, total] = await this.schoolsRepository.findAndCount({
+      skip: pagination.skip,
+      take: limit,
+      order: { createdAt: 'DESC' } as any,
+    });
+
+    return {
+      data,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  async findOne(id: string): Promise<School> {
+    const school = await this.schoolsRepository.findOne({
+      where: { id } as any,
+    });
+    if (!school) {
+      this.logger.warn('SchoolsService', 'School not found', {
+        loggerId: 'SCHOOL-READ-001',
+        schoolId: id,
+      });
+      throw new NotFoundException(`School #${id} not found`);
+    }
+    return school;
+  }
+
+  async update(
+    id: string,
+    updateSchoolDto: UpdateSchoolDto,
+    logoUrl?: string,
+  ): Promise<School> {
+    const school = await this.findOne(id);
+
+    if (updateSchoolDto.code && updateSchoolDto.code !== school.code) {
+      const existing = await this.schoolsRepository.findOne({
+        where: { code: updateSchoolDto.code },
+      });
+      if (existing && existing.id !== id) {
+        this.logger.warn('SchoolsService', 'School code conflict on update', {
+          loggerId: 'SCHOOL-UPDATE-001',
+          schoolId: id,
+          code: updateSchoolDto.code,
         });
-
-        return {
-            data,
-            meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
-        };
+        throw new ConflictException(
+          `School with code "${updateSchoolDto.code}" already exists`,
+        );
+      }
     }
 
-    async findOne(id: string): Promise<School> {
-        const school = await this.schoolsRepository.findOne({ where: { id } as any });
-        if (!school) {
-            this.logger.warn('SchoolsService', 'School not found', {
-                loggerId: 'SCHOOL-READ-001',
-                schoolId: id,
-            });
-            throw new NotFoundException(`School #${id} not found`);
-        }
-        return school;
+    Object.assign(school, updateSchoolDto);
+    if (logoUrl) {
+      school.logoUrl = logoUrl;
     }
+    const updated = await this.schoolsRepository.save(school);
+    this.logger.log('SchoolsService', 'School updated', {
+      loggerId: 'SCHOOL-UPDATE-002',
+      schoolId: id,
+    });
+    return updated;
+  }
 
-    async update(
-        id: string,
-        updateSchoolDto: UpdateSchoolDto,
-        logoUrl?: string,
-    ): Promise<School> {
-        const school = await this.findOne(id);
+  async remove(id: string): Promise<void> {
+    const school = await this.findOne(id);
+    await this.schoolsRepository.softRemove(school);
+    this.logger.log('SchoolsService', 'School soft deleted', {
+      loggerId: 'SCHOOL-DELETE-001',
+      schoolId: id,
+    });
+  }
 
-        if (updateSchoolDto.code && updateSchoolDto.code !== school.code) {
-            const existing = await this.schoolsRepository.findOne({
-                where: { code: updateSchoolDto.code },
-            });
-            if (existing && existing.id !== id) {
-                this.logger.warn('SchoolsService', 'School code conflict on update', {
-                    loggerId: 'SCHOOL-UPDATE-001',
-                    schoolId: id,
-                    code: updateSchoolDto.code,
-                });
-                throw new ConflictException(
-                    `School with code "${updateSchoolDto.code}" already exists`,
-                );
-            }
-        }
+  async updateLogo(id: string, logoUrl: string): Promise<School> {
+    const school = await this.findOne(id);
+    school.logoUrl = logoUrl;
+    return this.schoolsRepository.save(school);
+  }
 
-        Object.assign(school, updateSchoolDto);
-        if (logoUrl) {
-            school.logoUrl = logoUrl;
-        }
-        const updated = await this.schoolsRepository.save(school);
-        this.logger.log('SchoolsService', 'School updated', {
-            loggerId: 'SCHOOL-UPDATE-002',
-            schoolId: id,
-        });
-        return updated;
-    }
+  async getAnalytics() {
+    const total = await this.schoolsRepository.count();
+    const active = await this.schoolsRepository.count({
+      where: { isActive: true },
+    });
+    const schools = await this.schoolsRepository.find({
+      select: ['name', 'code', 'isActive'] as any,
+    });
 
-    async remove(id: string): Promise<void> {
-        const school = await this.findOne(id);
-        await this.schoolsRepository.softRemove(school);
-        this.logger.log('SchoolsService', 'School soft deleted', {
-            loggerId: 'SCHOOL-DELETE-001',
-            schoolId: id,
-        });
-    }
-
-    async updateLogo(id: string, logoUrl: string): Promise<School> {
-        const school = await this.findOne(id);
-        school.logoUrl = logoUrl;
-        return this.schoolsRepository.save(school);
-    }
-
-    async getAnalytics() {
-        const total = await this.schoolsRepository.count();
-        const active = await this.schoolsRepository.count({ where: { isActive: true } });
-        const schools = await this.schoolsRepository.find({
-            select: ['name', 'code', 'isActive'] as any,
-        });
-
-        return {
-            totalSchools: total,
-            activeSchools: active,
-            inactiveSchools: total - active,
-            totalStudents: null, // TODO: fill when StudentsModule is built
-            totalTeachers: null, // TODO: fill when TeachersModule is built
-            schools: schools.map((s) => ({
-                id: (s as any).id,
-                name: s.name,
-                code: s.code,
-                isActive: s.isActive,
-                studentCount: null,
-                teacherCount: null,
-            })),
-        };
-    }
+    return {
+      totalSchools: total,
+      activeSchools: active,
+      inactiveSchools: total - active,
+      totalStudents: null, // TODO: fill when StudentsModule is built
+      totalTeachers: null, // TODO: fill when TeachersModule is built
+      schools: schools.map((s) => ({
+        id: (s as any).id,
+        name: s.name,
+        code: s.code,
+        isActive: s.isActive,
+        studentCount: null,
+        teacherCount: null,
+      })),
+    };
+  }
 }

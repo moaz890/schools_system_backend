@@ -4,8 +4,8 @@ import { IsBoolean, IsOptional } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateSchoolDto extends PartialType(CreateSchoolDto) {
-    @ApiPropertyOptional({ example: true })
-    @IsOptional()
-    @IsBoolean()
-    isActive?: boolean;
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }

@@ -6,12 +6,9 @@ import { GradeLevelsController } from './grade-levels.controller';
 import { StagesModule } from '../stages/stages.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([GradeLevel]),
-        StagesModule,
-    ],
-    controllers: [GradeLevelsController],
-    providers: [GradeLevelsService],
-    exports: [GradeLevelsService],
+  imports: [TypeOrmModule.forFeature([GradeLevel]), StagesModule],
+  controllers: [GradeLevelsController],
+  providers: [GradeLevelsService],
+  exports: [GradeLevelsService],
 })
-export class GradeLevelsModule { }
+export class GradeLevelsModule {}

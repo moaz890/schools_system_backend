@@ -7,30 +7,29 @@ import { UserRole } from '../../../../common/enums/user-role.enum';
 
 @Injectable()
 export class UsersQueryService {
-    constructor(private readonly dal: UsersDalService) {}
+  constructor(private readonly dal: UsersDalService) {}
 
-    async findAll(
-        query: QueryUsersDto,
-        callerSchoolId: string | null,
-        callerRole: UserRole,
-    ): Promise<{ data: User[]; meta: any }> {
-        return this.dal.list(query, callerSchoolId, callerRole);
+  async findAll(
+    query: QueryUsersDto,
+    callerSchoolId: string | null,
+    callerRole: UserRole,
+  ): Promise<{ data: User[]; meta: any }> {
+    return this.dal.list(query, callerSchoolId, callerRole);
+  }
+
+  async findOne(id: string, caller?: AuthCaller): Promise<User> {
+    const user = await this.dal.findUserSelectableById(id);
+    if (!user) throw new NotFoundException(`User #${id} not found`);
+
+    if (caller) {
+      if (
+        caller.role !== UserRole.SUPER_ADMIN &&
+        user.schoolId !== caller.schoolId
+      ) {
+        throw new NotFoundException(`User #${id} not found`);
+      }
     }
 
-    async findOne(id: string, caller?: AuthCaller): Promise<User> {
-        const user = await this.dal.findUserSelectableById(id);
-        if (!user) throw new NotFoundException(`User #${id} not found`);
-
-        if (caller) {
-            if (
-                caller.role !== UserRole.SUPER_ADMIN &&
-                user.schoolId !== caller.schoolId
-            ) {
-                throw new NotFoundException(`User #${id} not found`);
-            }
-        }
-
-        return user;
-    }
+    return user;
+  }
 }
-

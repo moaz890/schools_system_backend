@@ -5,32 +5,35 @@ import { Stage } from '../../stages/entities/stage.entity';
 import type { LocalizedString } from '../../../../common/i18n/localized-string.type';
 
 @Entity('grade_levels')
-@Index('UQ_grade_levels_stage_order', ['stageId', 'order'], { unique: true, where: '"deleted_at" IS NULL' })
+@Index('UQ_grade_levels_stage_order', ['stageId', 'order'], {
+  unique: true,
+  where: '"deleted_at" IS NULL',
+})
 export class GradeLevel extends BaseEntity {
-    @Column({ name: 'school_id', type: 'uuid' })
-    schoolId: string;
+  @Column({ name: 'school_id', type: 'uuid' })
+  schoolId: string;
 
-    @ManyToOne(() => School, { nullable: false, onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'school_id' })
-    school: School;
+  @ManyToOne(() => School, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'school_id' })
+  school: School;
 
-    @Column({ name: 'stage_id', type: 'uuid' })
-    stageId: string;
+  @Column({ name: 'stage_id', type: 'uuid' })
+  stageId: string;
 
-    @ManyToOne(() => Stage, (stage) => stage.gradeLevels, {
-        nullable: false,
-        onDelete: 'CASCADE',
-    })
-    @JoinColumn({ name: 'stage_id' })
-    stage: Stage;
+  @ManyToOne(() => Stage, (stage) => stage.gradeLevels, {
+    nullable: false,
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'stage_id' })
+  stage: Stage;
 
-    /**
-     * Auto-generated for non-KG stages, manually set for KG stages.
-     * Example: { en: "Grade 7", ar: "الصف 7" }
-     */
-    @Column({ name: 'name', type: 'jsonb' })
-    name: LocalizedString;
+  /**
+   * Auto-generated for non-KG stages, manually set for KG stages.
+   * Example: { en: "Grade 7", ar: "الصف 7" }
+   */
+  @Column({ name: 'name', type: 'jsonb' })
+  name: LocalizedString;
 
-    @Column({ name: 'order', type: 'int' })
-    order: number;
+  @Column({ name: 'order', type: 'int' })
+  order: number;
 }

@@ -21,8 +21,6 @@ import { AcademicYearsModule } from './modules/core/academic-years/academic-year
 import { AcademicsModule } from './modules/academics/academics.module';
 import { SchoolStrategiesModule } from './modules/core/school-strategies/school-strategies.module';
 
-
-
 @Module({
   imports: [
     // Global config — load all config namespaces
@@ -82,4 +80,4 @@ import { SchoolStrategiesModule } from './modules/core/school-strategies/school-
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

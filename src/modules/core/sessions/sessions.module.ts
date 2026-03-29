@@ -9,9 +9,9 @@ import { RevokeSessionController } from './revoke-session.controller';
 import { AuditLogModule } from '../audit/audit-log.module';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Session, User]), AuditLogModule],
-    controllers: [UserSessionsController, RevokeSessionController],
-    providers: [SessionsService, SessionAccessPolicy],
-    exports: [SessionsService, TypeOrmModule.forFeature([Session])],
+  imports: [TypeOrmModule.forFeature([Session, User]), AuditLogModule],
+  controllers: [UserSessionsController, RevokeSessionController],
+  providers: [SessionsService, SessionAccessPolicy],
+  exports: [SessionsService, TypeOrmModule.forFeature([Session])],
 })
 export class SessionsModule {}

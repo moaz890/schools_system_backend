@@ -1,9 +1,5 @@
 import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
-import {
-    ApiBearerAuth,
-    ApiOperation,
-    ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SessionsService } from './sessions.service';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
@@ -18,19 +14,25 @@ import type { AuthCaller } from '../users/types/auth-caller.type';
 @ApiBearerAuth('access-token')
 @Controller('users')
 export class UserSessionsController {
-    constructor(private readonly sessionsService: SessionsService) {}
+  constructor(private readonly sessionsService: SessionsService) {}
 
-    @Get(':id/sessions')
-    @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT)
-    @ApiOperation({
-        summary: 'List sessions for a user',
-        description:
-            'Super admin: any user. School admin: users in their school only. Others: only their own user id.',
-    })
-    listForUser(
-        @Param('id', ParseUUIDPipe) id: string,
-        @CurrentUser() caller: AuthCaller,
-    ) {
-        return this.sessionsService.listSessionsForUser(id, caller);
-    }
+  @Get(':id/sessions')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.SCHOOL_ADMIN,
+    UserRole.TEACHER,
+    UserRole.STUDENT,
+    UserRole.PARENT,
+  )
+  @ApiOperation({
+    summary: 'List sessions for a user',
+    description:
+      'Super admin: any user. School admin: users in their school only. Others: only their own user id.',
+  })
+  listForUser(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() caller: AuthCaller,
+  ) {
+    return this.sessionsService.listSessionsForUser(id, caller);
+  }
 }

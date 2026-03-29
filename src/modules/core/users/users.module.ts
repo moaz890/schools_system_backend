@@ -10,18 +10,18 @@ import { UsersQueryService } from './services/users-query.service';
 import { UsersProfileService } from './services/users-profile.service';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([User]),
-        MulterModule.register({ dest: './uploads' }),
-    ],
-    controllers: [UsersController],
-    providers: [
-        UsersService,
-        UsersDalService,
-        UsersCreateService,
-        UsersQueryService,
-        UsersProfileService,
-    ],
-    exports: [UsersService, UsersCreateService, TypeOrmModule], // UsersCreateService exported for other modules
+  imports: [
+    TypeOrmModule.forFeature([User]),
+    MulterModule.register({ dest: './uploads' }),
+  ],
+  controllers: [UsersController],
+  providers: [
+    UsersService,
+    UsersDalService,
+    UsersCreateService,
+    UsersQueryService,
+    UsersProfileService,
+  ],
+  exports: [UsersService, UsersCreateService, TypeOrmModule], // UsersCreateService exported for other modules
 })
-export class UsersModule { }
+export class UsersModule {}

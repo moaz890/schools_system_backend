@@ -10,45 +10,37 @@ import { switchMap } from 'rxjs/operators';
  * This lets `create`/`update` stay compatible with regular JSON requests.
  */
 export function ConditionalFileInterceptor(
-    fieldName: string,
-    localOptions: multer.Options,
+  fieldName: string,
+  localOptions: multer.Options,
 ): any {
-    const multipartMulter = multer(localOptions);
+  const multipartMulter = multer(localOptions);
 
-    @Injectable()
-    class ConditionalMixinInterceptor implements NestInterceptor {
-        intercept(
-            context: ExecutionContext,
-            next: CallHandler,
-        ): Observable<any> {
-            const ctx = context.switchToHttp();
-            const request = ctx.getRequest();
-            const response = ctx.getResponse();
+  @Injectable()
+  class ConditionalMixinInterceptor implements NestInterceptor {
+    intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+      const ctx = context.switchToHttp();
+      const request = ctx.getRequest();
+      const response = ctx.getResponse();
 
-            const contentType = request?.headers?.['content-type'];
-            const isMultipart =
-                typeof contentType === 'string' &&
-                contentType.toLowerCase().includes('multipart/');
+      const contentType = request?.headers?.['content-type'];
+      const isMultipart =
+        typeof contentType === 'string' &&
+        contentType.toLowerCase().includes('multipart/');
 
-            if (!isMultipart) {
-                return next.handle();
-            }
+      if (!isMultipart) {
+        return next.handle();
+      }
 
-            return from(
-                new Promise<void>((resolve, reject) => {
-                    multipartMulter.single(fieldName)(
-                        request,
-                        response,
-                        (err: any) => {
-                            if (err) return reject(transformException(err));
-                            resolve();
-                        },
-                    );
-                }),
-            ).pipe(switchMap(() => next.handle()));
-        }
+      return from(
+        new Promise<void>((resolve, reject) => {
+          multipartMulter.single(fieldName)(request, response, (err: any) => {
+            if (err) return reject(transformException(err));
+            resolve();
+          });
+        }),
+      ).pipe(switchMap(() => next.handle()));
     }
+  }
 
-    return mixin(ConditionalMixinInterceptor);
+  return mixin(ConditionalMixinInterceptor);
 }
-

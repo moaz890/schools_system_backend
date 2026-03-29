@@ -6,13 +6,13 @@ import { AccountStatus } from '../../../../common/enums/account-status.enum';
 import { PaginationDto } from '../../../../common/dto/pagination.dto';
 
 export class QueryUsersDto extends PaginationDto {
-    @ApiPropertyOptional({ enum: UserRole })
-    @IsOptional()
-    @IsEnum(UserRole)
-    role?: UserRole;
+  @ApiPropertyOptional({ enum: UserRole })
+  @IsOptional()
+  @IsEnum(UserRole)
+  role?: UserRole;
 
-    @ApiPropertyOptional({ enum: AccountStatus })
-    @IsOptional()
-    @IsEnum(AccountStatus)
-    status?: AccountStatus;
+  @ApiPropertyOptional({ enum: AccountStatus })
+  @IsOptional()
+  @IsEnum(AccountStatus)
+  status?: AccountStatus;
 }

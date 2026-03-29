@@ -5,9 +5,9 @@ import { StagesService } from './stages.service';
 import { StagesController } from './stages.controller';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Stage])],
-    controllers: [StagesController],
-    providers: [StagesService],
-    exports: [StagesService],
+  imports: [TypeOrmModule.forFeature([Stage])],
+  controllers: [StagesController],
+  providers: [StagesService],
+  exports: [StagesService],
 })
-export class StagesModule { }
+export class StagesModule {}

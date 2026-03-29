@@ -13,21 +13,20 @@ import { AcademicYearsCurrentFlagsService } from './services/academic-years-curr
 import { AcademicYearsWriterDalService } from './services/academic-years-writer-dal.service';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([AcademicYear, Semester])],
-    controllers: [
-        AcademicYearsController,
-        AcademicYearSemestersController,
-        SemestersController,
-    ],
-    providers: [
-        AcademicYearsService,
-        AcademicYearsCommandsService,
-        AcademicYearsQueriesService,
-        AcademicCalendarService,
-        AcademicYearsCurrentFlagsService,
-        AcademicYearsWriterDalService,
-    ],
-    exports: [AcademicYearsService, AcademicCalendarService],
+  imports: [TypeOrmModule.forFeature([AcademicYear, Semester])],
+  controllers: [
+    AcademicYearsController,
+    AcademicYearSemestersController,
+    SemestersController,
+  ],
+  providers: [
+    AcademicYearsService,
+    AcademicYearsCommandsService,
+    AcademicYearsQueriesService,
+    AcademicCalendarService,
+    AcademicYearsCurrentFlagsService,
+    AcademicYearsWriterDalService,
+  ],
+  exports: [AcademicYearsService, AcademicCalendarService],
 })
 export class AcademicYearsModule {}
-

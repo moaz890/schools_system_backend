@@ -5,9 +5,8 @@ import { AuthAuditLogService } from './services/auth-audit-log.service';
 import { AuthSecurityAuditService } from './services/auth-security-audit.service';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([AuthAuditLog])],
-    providers: [AuthAuditLogService, AuthSecurityAuditService],
-    exports: [AuthSecurityAuditService],
+  imports: [TypeOrmModule.forFeature([AuthAuditLog])],
+  providers: [AuthAuditLogService, AuthSecurityAuditService],
+  exports: [AuthSecurityAuditService],
 })
 export class AuditLogModule {}
-

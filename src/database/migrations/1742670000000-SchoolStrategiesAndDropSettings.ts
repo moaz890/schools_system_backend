@@ -8,10 +8,10 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *       stages/grade_levels table creation are in migration 1742660000000.
  */
 export class SchoolStrategiesAndDropSettings1742670000000 implements MigrationInterface {
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // ── 1. Create school_strategies table ─────────────────────────────────
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // ── 1. Create school_strategies table ─────────────────────────────────
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TYPE calculation_method_enum AS ENUM (
                 'CREDIT_HOURS',
                 'TOTAL_POINTS',
@@ -19,7 +19,7 @@ export class SchoolStrategiesAndDropSettings1742670000000 implements MigrationIn
             )
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TYPE promotion_policy_enum AS ENUM (
                 'AUTO',
                 'MANUAL',
@@ -27,7 +27,7 @@ export class SchoolStrategiesAndDropSettings1742670000000 implements MigrationIn
             )
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE school_strategies (
                 id                              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
                 school_id                       uuid        NOT NULL UNIQUE REFERENCES schools(id) ON DELETE CASCADE,
@@ -52,23 +52,23 @@ export class SchoolStrategiesAndDropSettings1742670000000 implements MigrationIn
             )
         `);
 
-        // ── 2. Back-fill — create a default strategy for every existing school ─
+    // ── 2. Back-fill — create a default strategy for every existing school ─
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             INSERT INTO school_strategies (school_id)
             SELECT id FROM schools WHERE deleted_at IS NULL
         `);
 
-        // ── 3. Drop the old settings column ───────────────────────────────────
+    // ── 3. Drop the old settings column ───────────────────────────────────
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE schools DROP COLUMN IF EXISTS settings
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        // Restore settings column with defaults
-        await queryRunner.query(`
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // Restore settings column with defaults
+    await queryRunner.query(`
             ALTER TABLE schools
             ADD COLUMN settings jsonb NOT NULL DEFAULT '{
                 "gradingScale": "percentage",
@@ -79,8 +79,8 @@ export class SchoolStrategiesAndDropSettings1742670000000 implements MigrationIn
             }'::jsonb
         `);
 
-        await queryRunner.query(`DROP TABLE IF EXISTS school_strategies`);
-        await queryRunner.query(`DROP TYPE IF EXISTS promotion_policy_enum`);
-        await queryRunner.query(`DROP TYPE IF EXISTS calculation_method_enum`);
-    }
+    await queryRunner.query(`DROP TABLE IF EXISTS school_strategies`);
+    await queryRunner.query(`DROP TYPE IF EXISTS promotion_policy_enum`);
+    await queryRunner.query(`DROP TYPE IF EXISTS calculation_method_enum`);
+  }
 }

@@ -15,23 +15,25 @@ import { AuthPasswordService } from './services/auth-password.service';
 import { AuditLogModule } from '../audit/audit-log.module';
 
 @Module({
-    imports: [
-        EmailModule,
-        AuditLogModule,
-        PassportModule.register({ defaultStrategy: 'jwt' }),
-        JwtModule.registerAsync({
-            imports: [ConfigModule],
-            useFactory: (configService: ConfigService) => ({
-                secret: configService.get<string>('jwt.accessSecret') ?? '',
-                signOptions: { expiresIn: configService.get<string>('jwt.accessExpiresIn') as any },
-            }),
-            inject: [ConfigService],
-        }),
-        SessionsModule,
-        TypeOrmModule.forFeature([User, School]),
-    ],
-    controllers: [AuthController],
-    providers: [AuthService, JwtStrategy, AuthDalService, AuthPasswordService],
-    exports: [AuthService, JwtModule, PassportModule],
+  imports: [
+    EmailModule,
+    AuditLogModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('jwt.accessSecret') ?? '',
+        signOptions: {
+          expiresIn: configService.get<string>('jwt.accessExpiresIn') as any,
+        },
+      }),
+      inject: [ConfigService],
+    }),
+    SessionsModule,
+    TypeOrmModule.forFeature([User, School]),
+  ],
+  controllers: [AuthController],
+  providers: [AuthService, JwtStrategy, AuthDalService, AuthPasswordService],
+  exports: [AuthService, JwtModule, PassportModule],
 })
-export class AuthModule { }
+export class AuthModule {}
