@@ -290,6 +290,126 @@ export const SEED_GRADE_LEVELS = [
 ] as const;
 
 /**
+ * Current academic year label for seed data. Used for idempotent upsert and `npm run seed:clear`.
+ */
+export const SEED_ACADEMIC_YEAR_NAME_EN = '2025-2026';
+
+export const SEED_ACADEMIC_YEARS = [
+  {
+    schoolCode: 'GREENHS',
+    name: {
+      en: SEED_ACADEMIC_YEAR_NAME_EN,
+      ar: '٢٠٢٥–٢٠٢٦',
+    },
+    startDate: '2025-09-01T00:00:00.000Z',
+    endDate: '2026-06-30T23:59:59.999Z',
+    isCurrent: true,
+  },
+  {
+    schoolCode: 'BLUEVA',
+    name: {
+      en: SEED_ACADEMIC_YEAR_NAME_EN,
+      ar: '٢٠٢٥–٢٠٢٦',
+    },
+    startDate: '2025-09-01T00:00:00.000Z',
+    endDate: '2026-06-30T23:59:59.999Z',
+    isCurrent: true,
+  },
+] as const;
+
+/** Homeroom teachers — `role` teacher; one per seeded class (unique homeroom per year). */
+export const SEED_TEACHERS = [
+  {
+    schoolCode: 'GREENHS',
+    email: 'teacher.ahmed@greenhs.test',
+    name: { en: 'Ahmed Hassan', ar: 'أحمد حسن' },
+    nationalId: 'SEED-NID-TEACHER-GREENHS-001',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    email: 'teacher.nora@blueva.test',
+    name: { en: 'Nora Al-Qahtani', ar: 'نورة القحطاني' },
+    nationalId: 'SEED-NID-TEACHER-BLUEVA-001',
+  },
+] as const;
+
+export const SEED_STUDENTS = [
+  {
+    schoolCode: 'GREENHS',
+    email: 'student.one@greenhs.test',
+    name: { en: 'Youssef Ali', ar: 'يوسف علي' },
+    nationalId: 'SEED-NID-STU-GREENHS-001',
+  },
+  {
+    schoolCode: 'GREENHS',
+    email: 'student.two@greenhs.test',
+    name: { en: 'Layla Mahmoud', ar: 'ليلى محمود' },
+    nationalId: 'SEED-NID-STU-GREENHS-002',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    email: 'student.one@blueva.test',
+    name: { en: 'Khalid Saeed', ar: 'خالد سعيد' },
+    nationalId: 'SEED-NID-STU-BLUEVA-001',
+  },
+] as const;
+
+/**
+ * Class sections inserted directly (same shape as API would create).
+ * Grade is resolved via stage + order; academic year is the seed current year per school.
+ */
+export const SEED_CLASSES = [
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    sectionLetter: 'A',
+    name: { en: 'Grade 3 A', ar: 'الصف 3 أ' },
+    capacity: 35,
+    homeroomTeacherNationalId: 'SEED-NID-TEACHER-GREENHS-001',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    stageName: 'Primary',
+    gradeOrder: 2,
+    sectionLetter: 'A',
+    name: { en: 'Grade 2 A', ar: 'الصف 2 أ' },
+    capacity: 28,
+    homeroomTeacherNationalId: 'SEED-NID-TEACHER-BLUEVA-001',
+  },
+] as const;
+
+/**
+ * One active enrollment per student (matches class grade); creates `student_grade_levels` row if missing.
+ */
+export const SEED_SAMPLE_ENROLLMENTS = [
+  {
+    schoolCode: 'GREENHS',
+    studentNationalId: 'SEED-NID-STU-GREENHS-001',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    sectionLetter: 'A',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    studentNationalId: 'SEED-NID-STU-BLUEVA-001',
+    stageName: 'Primary',
+    gradeOrder: 2,
+    sectionLetter: 'A',
+  },
+] as const;
+
+/** All national IDs owned by seed users (for sessions + user cleanup). */
+export function allSeedNationalIds(): string[] {
+  const ids = new Set<string>();
+  ids.add(SEED_SUPER_ADMIN.nationalId);
+  for (const a of SEED_ADMINS) ids.add(a.nationalId);
+  for (const t of SEED_TEACHERS) ids.add(t.nationalId);
+  for (const s of SEED_STUDENTS) ids.add(s.nationalId);
+  return [...ids];
+}
+
+/**
  * Subjects per school — codes are unique per school.
  * GREENHS uses credit hours (matches SEED_STRATEGIES CREDIT_HOURS).
  * BLUEVA uses total points (matches SEED_STRATEGIES); seed subjects set max_points only.

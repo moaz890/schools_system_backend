@@ -4,29 +4,21 @@
  * Usage (from `schools-backend`):
  *   npm run seed:clear
  *
- * Order: sessions → users → seed subjects (by school + seed subject codes; cascades links/profiles)
- * → grade_levels → stages → schools.
+ * Order: delete seed academic year per school (cascades semesters, classes,
+ * enrollments, student_grade_levels) → sessions → users → seed subjects
+ * (cascades links/profiles) → grade_levels → stages → schools.
  */
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { Client } from 'pg';
 import {
-  SEED_ADMINS,
+  allSeedNationalIds,
+  SEED_ACADEMIC_YEAR_NAME_EN,
   SEED_SCHOOLS,
   SEED_SUBJECTS,
-  SEED_SUPER_ADMIN,
 } from './seed-data';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
-
-function seedNationalIds(): string[] {
-  const ids = new Set<string>();
-  ids.add(SEED_SUPER_ADMIN.nationalId);
-  for (const a of SEED_ADMINS) {
-    ids.add(a.nationalId);
-  }
-  return [...ids];
-}
 
 function seedSchoolCodes(): string[] {
   return SEED_SCHOOLS.map((s) => s.code);
@@ -58,8 +50,36 @@ async function main() {
     throw e;
   }
 
-  const nationalIds = seedNationalIds();
+  const nationalIds = allSeedNationalIds();
   const schoolCodes = seedSchoolCodes();
+
+  const schoolIdsRes = await client.query(
+    `SELECT id FROM schools WHERE code = ANY($1::text[]) AND deleted_at IS NULL`,
+    [schoolCodes],
+  );
+  const schoolIds = schoolIdsRes.rows.map((r) => String(r.id));
+
+  if (schoolIds.length > 0) {
+    try {
+      const delYears = await client.query(
+        `DELETE FROM academic_years
+         WHERE school_id = ANY($1::uuid[])
+           AND name->>'en' = $2
+           AND deleted_at IS NULL`,
+        [schoolIds, SEED_ACADEMIC_YEAR_NAME_EN],
+      );
+      console.log(
+        `Deleted ${delYears.rowCount ?? 0} seed academic year row(s) (cascades classes, enrollments, placements, semesters).`,
+      );
+    } catch (e: any) {
+      if (e.code !== '42P01') {
+        throw e;
+      }
+      console.warn(
+        'Table "academic_years" missing — skipping academic year delete.',
+      );
+    }
+  }
 
   const userIdsRes = await client.query(
     `SELECT id FROM users WHERE national_id = ANY($1::text[]) AND deleted_at IS NULL`,
@@ -82,13 +102,6 @@ async function main() {
     [nationalIds],
   );
   console.log(`Deleted ${delUsers.rowCount ?? 0} seed user row(s).`);
-
-  // Look up school IDs for stage/grade cleanup
-  const schoolIdsRes = await client.query(
-    `SELECT id FROM schools WHERE code = ANY($1::text[]) AND deleted_at IS NULL`,
-    [schoolCodes],
-  );
-  const schoolIds = schoolIdsRes.rows.map((r) => String(r.id));
 
   if (schoolIds.length > 0) {
     const subjectCodes = seedSubjectCodes();
@@ -128,7 +141,7 @@ async function main() {
 
   await client.end();
   console.log(
-    'Seed data cleared (by national_id + school codes from seed-data).',
+    'Seed data cleared (academic year + national_id + school codes from seed-data).',
   );
 }
 

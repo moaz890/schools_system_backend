@@ -1,6 +1,7 @@
 /**
  * Seeds 2 schools, super_admin, school_admin users, stages, grade levels,
- * subjects, grade–subject links, and sample assessment profiles (see seed-data.ts).
+ * academic years, teachers, students, classes, sample enrollments,
+ * subjects, grade–subject links, and assessment profiles (see seed-data.ts).
  *
  * Usage (from `schools-backend`):
  *   npm run seed
@@ -12,16 +13,22 @@ import * as path from 'path';
 import { Client } from 'pg';
 import * as bcrypt from 'bcrypt';
 import {
+  SEED_ACADEMIC_YEAR_NAME_EN,
+  SEED_ACADEMIC_YEARS,
   SEED_ADMINS,
+  SEED_CLASSES,
   SEED_DEFAULT_PASSWORD,
   SEED_GRADE_LEVELS,
   SEED_GRADE_LEVEL_SUBJECT_LINKS,
+  SEED_SAMPLE_ENROLLMENTS,
   SEED_SCHOOLS,
   SEED_STAGES,
   SEED_STRATEGIES,
+  SEED_STUDENTS,
   SEED_SUBJECTS,
   SEED_SUBJECT_ASSESSMENT_PROFILES,
   SEED_SUPER_ADMIN,
+  SEED_TEACHERS,
 } from './seed-data';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
@@ -282,6 +289,347 @@ Create the schema first, then run this script again:
     );
   }
 
+  const schoolCodesList = SEED_SCHOOLS.map((s) => s.code);
+  const glRows = await client.query(
+    `SELECT gl.id, sch.code AS school_code, st.name->>'en' AS stage_en, gl."order" AS grade_order
+     FROM grade_levels gl
+     INNER JOIN schools sch ON sch.id = gl.school_id AND sch.deleted_at IS NULL
+     INNER JOIN stages st ON st.id = gl.stage_id AND st.deleted_at IS NULL
+     WHERE sch.code = ANY($1::text[]) AND gl.deleted_at IS NULL`,
+    [schoolCodesList],
+  );
+  const gradeKeyToId = new Map<string, string>();
+  for (const row of glRows.rows) {
+    gradeKeyToId.set(
+      `${row.school_code}:${row.stage_en}:${row.grade_order}`,
+      String(row.id),
+    );
+  }
+
+  // ─── Academic years (current) ──────────────────────────────────────────────
+
+  let academicYearsTableMissing = false;
+  try {
+    await client.query('SELECT 1 FROM academic_years LIMIT 1');
+  } catch (e: any) {
+    if (e.code === '42P01') {
+      academicYearsTableMissing = true;
+      console.warn(
+        '\nSkipping academic year / class / enrollment seed: "academic_years" missing. Run migrations.',
+      );
+    } else {
+      throw e;
+    }
+  }
+
+  const schoolCodeToAcademicYearId = new Map<string, string>();
+
+  if (!academicYearsTableMissing) {
+    for (const y of SEED_ACADEMIC_YEARS) {
+      const schoolId = codeToSchoolId.get(y.schoolCode);
+      if (!schoolId) continue;
+
+      const ex = await client.query(
+        `SELECT id FROM academic_years
+         WHERE school_id = $1 AND name->>'en' = $2 AND deleted_at IS NULL`,
+        [schoolId, SEED_ACADEMIC_YEAR_NAME_EN],
+      );
+      if (ex.rows.length > 0) {
+        const yid = String(ex.rows[0].id);
+        schoolCodeToAcademicYearId.set(y.schoolCode, yid);
+        console.log(
+          `Academic year "${SEED_ACADEMIC_YEAR_NAME_EN}" (${y.schoolCode}) already exists, skipping.`,
+        );
+        continue;
+      }
+
+      await client.query(
+        `UPDATE academic_years SET is_current = false, updated_at = NOW()
+         WHERE school_id = $1 AND deleted_at IS NULL`,
+        [schoolId],
+      );
+      const ins = await client.query(
+        `INSERT INTO academic_years (school_id, name, start_date, end_date, is_current, created_at, updated_at)
+         VALUES ($1, $2::jsonb, $3, $4, $5, NOW(), NOW())
+         RETURNING id`,
+        [
+          schoolId,
+          JSON.stringify(y.name),
+          y.startDate,
+          y.endDate,
+          y.isCurrent,
+        ],
+      );
+      const yid = String(ins.rows[0].id);
+      schoolCodeToAcademicYearId.set(y.schoolCode, yid);
+      console.log(
+        `Created academic year "${SEED_ACADEMIC_YEAR_NAME_EN}" for ${y.schoolCode} id=${yid}`,
+      );
+    }
+  }
+
+  // ─── Teachers & students (for classes / enrollments) ─────────────────────
+
+  const nationalIdToUserId = new Map<string, string>();
+
+  async function upsertSchoolUser(opts: {
+    schoolId: string;
+    schoolCode: string;
+    email: string;
+    name: { en: string; ar: string };
+    nationalId: string;
+    role: 'teacher' | 'student';
+  }): Promise<void> {
+    const ex = await client.query(
+      `SELECT id FROM users WHERE email = $1 AND school_id = $2 AND deleted_at IS NULL`,
+      [opts.email, opts.schoolId],
+    );
+    if (ex.rows.length > 0) {
+      nationalIdToUserId.set(opts.nationalId, String(ex.rows[0].id));
+      console.log(
+        `User "${opts.email}" (${opts.schoolCode}) already exists, skipping.`,
+      );
+      return;
+    }
+    const nat = await client.query(
+      `SELECT id FROM users WHERE national_id = $1 AND deleted_at IS NULL`,
+      [opts.nationalId],
+    );
+    if (nat.rows.length > 0) {
+      console.warn(
+        `National ID ${opts.nationalId} already used — skipping ${opts.email}.`,
+      );
+      return;
+    }
+    const ins = await client.query(
+      `INSERT INTO users (
+          school_id, email, password_hash, name, phone,
+          role, status, national_id, national_id_type,
+          failed_login_attempts, locked_until, created_at, updated_at
+        ) VALUES (
+          $1, $2, $3, $4::jsonb, NULL,
+          $5, 'active', $6, 'national_id',
+          0, NULL, NOW(), NOW()
+        )
+        RETURNING id`,
+      [
+        opts.schoolId,
+        opts.email,
+        passwordHash,
+        JSON.stringify(opts.name),
+        opts.role,
+        opts.nationalId,
+      ],
+    );
+    nationalIdToUserId.set(opts.nationalId, String(ins.rows[0].id));
+    console.log(
+      `Created ${opts.role} ${opts.email} for ${opts.schoolCode}`,
+    );
+  }
+
+  if (!academicYearsTableMissing) {
+    for (const t of SEED_TEACHERS) {
+      const schoolId = codeToSchoolId.get(t.schoolCode);
+      if (!schoolId) continue;
+      await upsertSchoolUser({
+        schoolId,
+        schoolCode: t.schoolCode,
+        email: t.email,
+        name: t.name,
+        nationalId: t.nationalId,
+        role: 'teacher',
+      });
+    }
+    for (const st of SEED_STUDENTS) {
+      const schoolId = codeToSchoolId.get(st.schoolCode);
+      if (!schoolId) continue;
+      await upsertSchoolUser({
+        schoolId,
+        schoolCode: st.schoolCode,
+        email: st.email,
+        name: st.name,
+        nationalId: st.nationalId,
+        role: 'student',
+      });
+    }
+  }
+
+  // ─── Classes ───────────────────────────────────────────────────────────────
+
+  let classesTableMissing = false;
+  try {
+    await client.query('SELECT 1 FROM classes LIMIT 1');
+  } catch (e: any) {
+    if (e.code === '42P01') {
+      classesTableMissing = true;
+      console.warn('Skipping class seed: table "classes" missing.');
+    } else {
+      throw e;
+    }
+  }
+
+  const classCompositeKeyToId = new Map<string, string>();
+
+  if (!academicYearsTableMissing && !classesTableMissing) {
+    for (const c of SEED_CLASSES) {
+      const schoolId = codeToSchoolId.get(c.schoolCode);
+      const yearId = schoolCodeToAcademicYearId.get(c.schoolCode);
+      if (!schoolId || !yearId) {
+        console.warn(`Skip class seed: school or year missing (${c.schoolCode})`);
+        continue;
+      }
+      const gk = `${c.schoolCode}:${c.stageName}:${c.gradeOrder}`;
+      const gradeLevelId = gradeKeyToId.get(gk);
+      const teacherId = nationalIdToUserId.get(c.homeroomTeacherNationalId);
+      if (!gradeLevelId || !teacherId) {
+        console.warn(
+          `Skip class seed: grade or homeroom teacher not resolved (${gk})`,
+        );
+        continue;
+      }
+
+      const dup = await client.query(
+        `SELECT id FROM classes
+         WHERE school_id = $1 AND grade_level_id = $2 AND academic_year_id = $3
+           AND section_letter = $4 AND deleted_at IS NULL`,
+        [schoolId, gradeLevelId, yearId, c.sectionLetter],
+      );
+      if (dup.rows.length > 0) {
+        const cid = String(dup.rows[0].id);
+        classCompositeKeyToId.set(
+          `${c.schoolCode}:${c.stageName}:${c.gradeOrder}:${c.sectionLetter}`,
+          cid,
+        );
+        console.log(
+          `Class section ${c.sectionLetter} (${c.schoolCode} ${gk}) already exists, skipping.`,
+        );
+        continue;
+      }
+
+      const ins = await client.query(
+        `INSERT INTO classes (
+           school_id, grade_level_id, academic_year_id, section_letter, name, capacity,
+           homeroom_teacher_id, created_at, updated_at
+         ) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, NOW(), NOW())
+         RETURNING id`,
+        [
+          schoolId,
+          gradeLevelId,
+          yearId,
+          c.sectionLetter,
+          JSON.stringify(c.name),
+          c.capacity,
+          teacherId,
+        ],
+      );
+      const cid = String(ins.rows[0].id);
+      classCompositeKeyToId.set(
+        `${c.schoolCode}:${c.stageName}:${c.gradeOrder}:${c.sectionLetter}`,
+        cid,
+      );
+      console.log(
+        `Created class ${c.name.en} (${c.schoolCode}) id=${cid}`,
+      );
+    }
+  }
+
+  // ─── Sample enrollments + grade placement ────────────────────────────────
+
+  let enrollmentsTableMissing = false;
+  try {
+    await client.query('SELECT 1 FROM enrollments LIMIT 1');
+  } catch (e: any) {
+    if (e.code === '42P01') {
+      enrollmentsTableMissing = true;
+      console.warn('Skipping enrollment seed: table "enrollments" missing.');
+    } else {
+      throw e;
+    }
+  }
+
+  let studentGradeLevelsTableMissing = false;
+  try {
+    await client.query('SELECT 1 FROM student_grade_levels LIMIT 1');
+  } catch (e: any) {
+    if (e.code === '42P01') {
+      studentGradeLevelsTableMissing = true;
+      console.warn(
+        'Skipping enrollment seed: table "student_grade_levels" missing.',
+      );
+    } else {
+      throw e;
+    }
+  }
+
+  if (
+    !academicYearsTableMissing &&
+    !classesTableMissing &&
+    !enrollmentsTableMissing &&
+    !studentGradeLevelsTableMissing
+  ) {
+    for (const row of SEED_SAMPLE_ENROLLMENTS) {
+      const schoolId = codeToSchoolId.get(row.schoolCode);
+      const yearId = schoolCodeToAcademicYearId.get(row.schoolCode);
+      const studentId = nationalIdToUserId.get(row.studentNationalId);
+      const gk = `${row.schoolCode}:${row.stageName}:${row.gradeOrder}`;
+      const gradeLevelId = gradeKeyToId.get(gk);
+      const ck = `${row.schoolCode}:${row.stageName}:${row.gradeOrder}:${row.sectionLetter}`;
+      const classId = classCompositeKeyToId.get(ck);
+      if (!schoolId || !yearId || !studentId || !gradeLevelId || !classId) {
+        console.warn(
+          `Skip sample enrollment: missing ids for ${row.schoolCode} ${row.studentNationalId}`,
+        );
+        continue;
+      }
+
+      const exSgl = await client.query(
+        `SELECT id, grade_level_id FROM student_grade_levels
+         WHERE school_id = $1 AND student_id = $2 AND academic_year_id = $3
+           AND status = 'active' AND deleted_at IS NULL`,
+        [schoolId, studentId, yearId],
+      );
+      if (exSgl.rows.length === 0) {
+        await client.query(
+          `INSERT INTO student_grade_levels (
+             school_id, student_id, academic_year_id, grade_level_id, status, created_at, updated_at
+           ) VALUES ($1, $2, $3, $4, 'active', NOW(), NOW())`,
+          [schoolId, studentId, yearId, gradeLevelId],
+        );
+        console.log(
+          `Created student_grade_levels placement for ${row.studentNationalId} (${row.schoolCode})`,
+        );
+      } else if (String(exSgl.rows[0].grade_level_id) !== gradeLevelId) {
+        console.warn(
+          `Skip enrollment: student ${row.studentNationalId} already placed in another grade for this year.`,
+        );
+        continue;
+      }
+
+      const exEn = await client.query(
+        `SELECT id FROM enrollments
+         WHERE school_id = $1 AND student_id = $2 AND academic_year_id = $3
+           AND status = 'active' AND deleted_at IS NULL`,
+        [schoolId, studentId, yearId],
+      );
+      if (exEn.rows.length > 0) {
+        console.log(
+          `Active enrollment exists for ${row.studentNationalId} (${row.schoolCode}), skipping.`,
+        );
+        continue;
+      }
+
+      await client.query(
+        `INSERT INTO enrollments (
+           school_id, student_id, class_id, academic_year_id, enrollment_date, status, created_at, updated_at
+         ) VALUES ($1, $2, $3, $4, NOW(), 'active', NOW(), NOW())`,
+        [schoolId, studentId, classId, yearId],
+      );
+      console.log(
+        `Created sample enrollment: ${row.studentNationalId} → class ${classId}`,
+      );
+    }
+  }
+
   // ─── Subjects, curriculum links, assessment profiles ─────────────────────
 
   let subjectsTableMissing = false;
@@ -299,24 +647,6 @@ Create the schema first, then run this script again:
   }
 
   if (!subjectsTableMissing) {
-    const schoolCodesList = SEED_SCHOOLS.map((s) => s.code);
-
-    const glRows = await client.query(
-      `SELECT gl.id, sch.code AS school_code, st.name->>'en' AS stage_en, gl."order" AS grade_order
-       FROM grade_levels gl
-       INNER JOIN schools sch ON sch.id = gl.school_id AND sch.deleted_at IS NULL
-       INNER JOIN stages st ON st.id = gl.stage_id AND st.deleted_at IS NULL
-       WHERE sch.code = ANY($1::text[]) AND gl.deleted_at IS NULL`,
-      [schoolCodesList],
-    );
-    const gradeKeyToId = new Map<string, string>();
-    for (const row of glRows.rows) {
-      gradeKeyToId.set(
-        `${row.school_code}:${row.stage_en}:${row.grade_order}`,
-        String(row.id),
-      );
-    }
-
     const subjectKeyToId = new Map<string, string>();
 
     for (const sub of SEED_SUBJECTS) {
@@ -451,6 +781,12 @@ Create the schema first, then run this script again:
   );
   console.log(
     'Assessment profile: GET|PUT /api/v1/subjects/:id/assessment-profile',
+  );
+  console.log(
+    `\nTeachers & students use the same password as admins: "${SEED_DEFAULT_PASSWORD}"`,
+  );
+  console.log(
+    'Enrollments: POST /api/v1/enrollments · GET /api/v1/enrollments/classes/:classId/students',
   );
 
   await client.end();
