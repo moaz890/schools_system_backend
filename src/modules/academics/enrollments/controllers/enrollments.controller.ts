@@ -5,6 +5,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Patch,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../../../common/decorators/roles.decorator';
@@ -13,6 +14,7 @@ import { UserRole } from '../../../../common/enums/user-role.enum';
 import type { AuthCaller } from '../../../core/users/types/auth-caller.type';
 import { EnrollmentsService } from '../services/enrollments.service';
 import { CreateEnrollmentDto } from '../dto/create-enrollment.dto';
+import { UpdateEnrollmentDto } from '../dto/update-enrollment.dto';
 
 @ApiTags('Enrollments')
 @ApiBearerAuth('access-token')
@@ -30,7 +32,7 @@ export class EnrollmentsController {
     return this.service.create(dto, caller);
   }
 
-  @Get('classes/:classId/students')
+  @Get('classes/:classId')
   @Roles(UserRole.SCHOOL_ADMIN)
   @ApiOperation({ summary: 'List active students in a class' })
   listActiveStudents(
@@ -40,7 +42,7 @@ export class EnrollmentsController {
     return this.service.listActiveStudentsForClass(classId, caller);
   }
 
-  @Get('students/:studentId/enrollments')
+  @Get('students/:studentId')
   @Roles(UserRole.SCHOOL_ADMIN)
   @ApiOperation({ summary: 'List a student enrollment history' })
   listStudentEnrollments(
@@ -48,6 +50,17 @@ export class EnrollmentsController {
     @CurrentUser() caller: AuthCaller,
   ) {
     return this.service.listStudentEnrollments(studentId, caller);
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.SCHOOL_ADMIN)
+  @ApiOperation({ summary: 'Update enrollment status (school_admin only)' })
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateEnrollmentDto,
+    @CurrentUser() caller: AuthCaller,
+  ) {
+    return this.service.update(id, dto, caller);
   }
 }
 

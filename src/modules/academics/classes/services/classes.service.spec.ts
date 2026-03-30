@@ -6,6 +6,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ClassesService } from './classes.service';
+import { ClassesDalService } from './classes-dal.service';
+import { ClassesHelpersService } from './classes-helpers.service';
 import { ClassSection } from '../entities/class.entity';
 import { GradeLevel } from '../../grade-levels/entities/grade-level.entity';
 import { AcademicYear } from '../../../core/academic-years/entities/academic-year.entity';
@@ -47,6 +49,8 @@ describe('ClassesService (Phase 1)', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        ClassesDalService,
+        ClassesHelpersService,
         ClassesService,
         { provide: getRepositoryToken(ClassSection), useValue: classRepo },
         { provide: getRepositoryToken(GradeLevel), useValue: gradeRepo },
@@ -63,9 +67,17 @@ describe('ClassesService (Phase 1)', () => {
       id: 'g1',
       schoolId: 'school-1',
       name: { en: 'Grade 5', ar: 'الصف 5' },
+      order: 5,
     });
 
-    yearRepo.findOne.mockResolvedValue({ id: 'y1', schoolId: 'school-1' });
+    yearRepo.findOne.mockResolvedValue({
+      id: 'y1',
+      schoolId: 'school-1',
+      name: { en: '2025-2026', ar: '٢٠٢٥–٢٠٢٦' },
+      startDate: new Date('2025-09-01'),
+      endDate: new Date('2026-06-30'),
+      isCurrent: true,
+    });
 
     userRepo.findOne.mockResolvedValue({ id: 't1', role: UserRole.TEACHER });
 
@@ -76,6 +88,36 @@ describe('ClassesService (Phase 1)', () => {
       if (where.gradeLevelId) return 0;
       return 0;
     });
+
+    classRepo.findOne.mockResolvedValue({
+      id: 'class-new',
+      schoolId: 'school-1',
+      gradeLevelId: 'g1',
+      academicYearId: 'y1',
+      sectionLetter: 'A',
+      name: { en: 'Grade 5 A', ar: 'الصف 5 A' },
+      capacity: 30,
+      homeroomTeacherId: 't1',
+      gradeLevel: {
+        id: 'g1',
+        name: { en: 'Grade 5', ar: 'الصف 5' },
+        order: 5,
+      },
+      academicYear: {
+        id: 'y1',
+        name: { en: '2025-2026', ar: '٢٠٢٥–٢٠٢٦' },
+        startDate: new Date('2025-09-01'),
+        endDate: new Date('2026-06-30'),
+        isCurrent: true,
+      },
+      homeroomTeacher: {
+        id: 't1',
+        email: 'teacher@test',
+        name: { en: 'Teacher', ar: 'معلم' },
+      },
+    });
+
+    classRepo.save.mockResolvedValue({ id: 'class-new' } as any);
 
     const result = await service.create(
       {
@@ -119,8 +161,16 @@ describe('ClassesService (Phase 1)', () => {
       id: 'g1',
       schoolId: 'school-1',
       name: { en: 'Grade 5', ar: 'الصف 5' },
+      order: 5,
     });
-    yearRepo.findOne.mockResolvedValue({ id: 'y1', schoolId: 'school-1' });
+    yearRepo.findOne.mockResolvedValue({
+      id: 'y1',
+      schoolId: 'school-1',
+      name: { en: '2025-2026', ar: '٢٠٢٥–٢٠٢٦' },
+      startDate: new Date('2025-09-01'),
+      endDate: new Date('2026-06-30'),
+      isCurrent: true,
+    });
     userRepo.findOne.mockResolvedValue({ id: 't1', role: UserRole.TEACHER });
 
     classRepo.count.mockImplementation((opts: any) => {

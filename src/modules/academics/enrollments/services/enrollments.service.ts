@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { Enrollment } from '../entities/enrollment.entity';
 import { StudentGradeLevel } from '../entities/student-grade-level.entity';
 import { ClassSection } from '../../classes/entities/class.entity';
@@ -13,6 +13,7 @@ import type { AuthCaller } from '../../../core/users/types/auth-caller.type';
 import { EnrollmentStatus } from '../enums/enrollment-status.enum';
 import { UserRole } from '../../../../common/enums/user-role.enum';
 import type { CreateEnrollmentDto } from '../dto/create-enrollment.dto';
+import type { UpdateEnrollmentDto } from '../dto/update-enrollment.dto';
 
 @Injectable()
 export class EnrollmentsService {
@@ -26,6 +27,38 @@ export class EnrollmentsService {
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
   ) {}
+
+  private toSafeStudentPayload(student: User) {
+    return {
+      id: student.id,
+      // LocalizedString { en, ar }
+      name: student.name,
+      email: student.email
+    };
+  }
+
+  private toSafeClassPayload(cls: ClassSection) {
+    return {
+      id: cls.id,
+      sectionLetter: cls.sectionLetter,
+      name: cls.name,
+      gradeLevel: cls.gradeLevel
+        ? { id: cls.gradeLevel.id, name: cls.gradeLevel.name }
+        : undefined,
+      academicYear: cls.academicYear
+        ? { id: cls.academicYear.id, name: cls.academicYear.name }
+        : undefined,
+    };
+  }
+
+  private toSafeEnrollmentHistoryPayload(enrollment: Enrollment) {
+    return {
+      id: enrollment.id,
+      status: enrollment.status,
+      enrollmentDate: enrollment.enrollmentDate,
+      class: enrollment.class ? this.toSafeClassPayload(enrollment.class) : undefined,
+    };
+  }
 
   async create(dto: CreateEnrollmentDto, caller: AuthCaller) {
     const schoolId = this.resolveSchoolId(caller);
@@ -123,7 +156,7 @@ export class EnrollmentsService {
     const cls = await this.classRepo.findOne({ where: { id: classId, schoolId } });
     if (!cls) throw new NotFoundException('Class not found');
 
-    return this.enrollmentRepo.find({
+    const enrollments = await this.enrollmentRepo.find({
       where: {
         schoolId,
         classId,
@@ -132,6 +165,15 @@ export class EnrollmentsService {
       relations: ['student'],
       order: { enrollmentDate: 'ASC' } as any,
     });
+
+    // Avoid leaking passwordHash/createdAt/etc from `User` relation.
+    return enrollments.map((e) => ({
+      id: e.id,
+      status: e.status,
+      enrollmentDate: e.enrollmentDate,
+      classId: e.classId,
+      student: e.student ? this.toSafeStudentPayload(e.student) : undefined,
+    }));
   }
 
   async listStudentEnrollments(studentId: string, caller: AuthCaller) {
@@ -142,11 +184,92 @@ export class EnrollmentsService {
     } as any);
     if (!student) throw new NotFoundException('Student not found');
 
-    return this.enrollmentRepo.find({
+    const enrollments = await this.enrollmentRepo.find({
       where: { schoolId, studentId } as any,
       relations: ['class', 'class.gradeLevel', 'class.academicYear'],
       order: { enrollmentDate: 'DESC' } as any,
     });
+
+    // Avoid leaking internal `createdAt`/`updatedAt`/capacity/homeroomTeacher
+    // by returning only what the UI needs.
+    return enrollments.map((e) => this.toSafeEnrollmentHistoryPayload(e));
+  }
+
+  async update(enrollmentId: string, dto: UpdateEnrollmentDto, caller: AuthCaller) {
+    const schoolId = this.resolveSchoolId(caller);
+
+    const enrollment = await this.enrollmentRepo.findOne({
+      where: { id: enrollmentId, schoolId } as any,
+      relations: ['class', 'class.gradeLevel', 'class.academicYear'],
+    });
+
+    if (!enrollment) {
+      throw new NotFoundException('Enrollment not found');
+    }
+
+    // Validate allowed transitions only when activating.
+    if (dto.status === EnrollmentStatus.ACTIVE) {
+      // 1) Make sure student has no other active enrollment for this academic year.
+      const otherActiveCount = await this.enrollmentRepo.count({
+        where: {
+          schoolId,
+          studentId: enrollment.studentId,
+          academicYearId: enrollment.academicYearId,
+          status: EnrollmentStatus.ACTIVE,
+          id: Not(enrollment.id),
+        } as any,
+      });
+
+      if (otherActiveCount > 0) {
+        throw new BadRequestException(
+          'Student already has an active enrollment for this academic year',
+        );
+      }
+
+      // 2) Placement must match the class grade level for this academic year.
+      const activePlacement = await this.studentGradeLevelRepo.findOne({
+        where: {
+          schoolId,
+          studentId: enrollment.studentId,
+          academicYearId: enrollment.academicYearId,
+          status: EnrollmentStatus.ACTIVE,
+        } as any,
+      });
+
+      if (!activePlacement) {
+        throw new BadRequestException(
+          'Student grade placement is missing for this academic year',
+        );
+      }
+      if (enrollment.class && activePlacement.gradeLevelId !== enrollment.class.gradeLevelId) {
+        throw new BadRequestException(
+          'Student grade placement does not match the class grade level for this academic year',
+        );
+      }
+
+      // 3) Capacity check (active enrollments for this class).
+      const classCapacity = enrollment.class?.capacity;
+      if (classCapacity != null) {
+        const activeInClass = await this.enrollmentRepo.count({
+          where: {
+            schoolId,
+            classId: enrollment.classId,
+            status: EnrollmentStatus.ACTIVE,
+            id: Not(enrollment.id),
+          } as any,
+        });
+        if (activeInClass >= classCapacity) {
+          throw new BadRequestException('Class is full');
+        }
+      }
+    }
+
+    enrollment.status = dto.status;
+    await this.enrollmentRepo.save(enrollment);
+
+    // Return safe payload (same shape as history endpoint).
+    // Note: we re-map from `enrollment` entity; it has class loaded from earlier.
+    return this.toSafeEnrollmentHistoryPayload(enrollment);
   }
 
   private resolveSchoolId(caller: AuthCaller): string {
