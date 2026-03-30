@@ -45,7 +45,7 @@ export class UpdateSchoolStrategyDto {
   @ApiPropertyOptional({
     enum: CalculationMethod,
     description:
-      'How grades are calculated (CREDIT_HOURS, TOTAL_POINTS, CUMULATIVE_AVERAGE)',
+      'How grades are calculated: CREDIT_HOURS (subject credit hours) or TOTAL_POINTS (subject max points)',
   })
   @IsOptional()
   @IsEnum(CalculationMethod)

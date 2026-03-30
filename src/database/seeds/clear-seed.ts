@@ -4,12 +4,18 @@
  * Usage (from `schools-backend`):
  *   npm run seed:clear
  *
- * Order: sessions → users (by seed national_ids) → schools (by seed codes).
+ * Order: sessions → users → seed subjects (by school + seed subject codes; cascades links/profiles)
+ * → grade_levels → stages → schools.
  */
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { Client } from 'pg';
-import { SEED_ADMINS, SEED_SCHOOLS, SEED_SUPER_ADMIN } from './seed-data';
+import {
+  SEED_ADMINS,
+  SEED_SCHOOLS,
+  SEED_SUBJECTS,
+  SEED_SUPER_ADMIN,
+} from './seed-data';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
@@ -24,6 +30,10 @@ function seedNationalIds(): string[] {
 
 function seedSchoolCodes(): string[] {
   return SEED_SCHOOLS.map((s) => s.code);
+}
+
+function seedSubjectCodes(): string[] {
+  return [...new Set(SEED_SUBJECTS.map((s) => s.code))];
 }
 
 async function main() {
@@ -81,6 +91,22 @@ async function main() {
   const schoolIds = schoolIdsRes.rows.map((r) => String(r.id));
 
   if (schoolIds.length > 0) {
+    const subjectCodes = seedSubjectCodes();
+    try {
+      const delSubjects = await client.query(
+        `DELETE FROM subjects WHERE school_id = ANY($1::uuid[]) AND code = ANY($2::text[])`,
+        [schoolIds, subjectCodes],
+      );
+      console.log(
+        `Deleted ${delSubjects.rowCount ?? 0} seed subject row(s) (cascades links & profiles).`,
+      );
+    } catch (e: any) {
+      if (e.code !== '42P01') {
+        throw e;
+      }
+      console.warn('Table "subjects" missing — skipping subject delete.');
+    }
+
     const delGrades = await client.query(
       `DELETE FROM grade_levels WHERE school_id = ANY($1::uuid[])`,
       [schoolIds],

@@ -9,26 +9,36 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  */
 export class SchoolStrategiesAndDropSettings1742670000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // ── 1. Create school_strategies table ─────────────────────────────────
+    // ── 1. Enum types (safe if synchronize or a prior partial run created them) ─
 
     await queryRunner.query(`
-            CREATE TYPE calculation_method_enum AS ENUM (
-                'CREDIT_HOURS',
-                'TOTAL_POINTS',
-                'CUMULATIVE_AVERAGE'
-            )
+            DO $$ BEGIN
+                CREATE TYPE calculation_method_enum AS ENUM (
+                    'CREDIT_HOURS',
+                    'TOTAL_POINTS',
+                    'CUMULATIVE_AVERAGE'
+                );
+            EXCEPTION
+                WHEN duplicate_object THEN NULL;
+            END $$
         `);
 
     await queryRunner.query(`
-            CREATE TYPE promotion_policy_enum AS ENUM (
-                'AUTO',
-                'MANUAL',
-                'CONDITIONAL'
-            )
+            DO $$ BEGIN
+                CREATE TYPE promotion_policy_enum AS ENUM (
+                    'AUTO',
+                    'MANUAL',
+                    'CONDITIONAL'
+                );
+            EXCEPTION
+                WHEN duplicate_object THEN NULL;
+            END $$
         `);
 
+    // ── 2. Table (IF NOT EXISTS — avoids 42P07 when table was created outside migrations) ─
+
     await queryRunner.query(`
-            CREATE TABLE school_strategies (
+            CREATE TABLE IF NOT EXISTS school_strategies (
                 id                              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
                 school_id                       uuid        NOT NULL UNIQUE REFERENCES schools(id) ON DELETE CASCADE,
                 calculation_method              calculation_method_enum NOT NULL DEFAULT 'CREDIT_HOURS',
@@ -52,14 +62,15 @@ export class SchoolStrategiesAndDropSettings1742670000000 implements MigrationIn
             )
         `);
 
-    // ── 2. Back-fill — create a default strategy for every existing school ─
+    // ── 3. Back-fill — only schools that do not already have a row ─────────
 
     await queryRunner.query(`
             INSERT INTO school_strategies (school_id)
             SELECT id FROM schools WHERE deleted_at IS NULL
+            ON CONFLICT (school_id) DO NOTHING
         `);
 
-    // ── 3. Drop the old settings column ───────────────────────────────────
+    // ── 4. Drop the old settings column ───────────────────────────────────
 
     await queryRunner.query(`
             ALTER TABLE schools DROP COLUMN IF EXISTS settings

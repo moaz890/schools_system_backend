@@ -45,7 +45,7 @@ export const SEED_ADMINS = [
 /**
  * School strategies — one per school.
  * GREENHS uses Egyptian MOE defaults (50% pass).
- * BLUEVA uses Saudi MOE defaults (60% pass).
+ * BLUEVA uses Saudi-style pass band (60% pass) and total-points subject caps in seed subjects.
  */
 export const SEED_STRATEGIES = [
   {
@@ -68,7 +68,7 @@ export const SEED_STRATEGIES = [
   },
   {
     schoolCode: 'BLUEVA',
-    calculationMethod: 'CUMULATIVE_AVERAGE',
+    calculationMethod: 'TOTAL_POINTS',
     passingThreshold: 60,
     enableRounding: true,
     decimalPlaces: 1,
@@ -286,5 +286,324 @@ export const SEED_GRADE_LEVELS = [
     stageName: 'Primary',
     order: 6,
     name: { en: 'Grade 6', ar: 'الصف 6' },
+  },
+] as const;
+
+/**
+ * Subjects per school — codes are unique per school.
+ * GREENHS uses credit hours (matches SEED_STRATEGIES CREDIT_HOURS).
+ * BLUEVA uses total points (matches SEED_STRATEGIES); seed subjects set max_points only.
+ */
+export const SEED_SUBJECTS = [
+  // ── Green Hills ──
+  {
+    schoolCode: 'GREENHS',
+    code: 'MATH',
+    name: { en: 'Mathematics', ar: 'الرياضيات' },
+    category: 'core',
+    description: { en: 'Algebra, geometry, statistics', ar: 'جبر وهندسة وإحصاء' },
+    creditHours: 5,
+    maxPoints: null,
+    countsTowardGpa: true,
+    order: 1,
+  },
+  {
+    schoolCode: 'GREENHS',
+    code: 'ARA',
+    name: { en: 'Arabic Language', ar: 'اللغة العربية' },
+    category: 'language',
+    description: null,
+    creditHours: 5,
+    maxPoints: null,
+    countsTowardGpa: true,
+    order: 2,
+  },
+  {
+    schoolCode: 'GREENHS',
+    code: 'ENG',
+    name: { en: 'English', ar: 'الإنجليزية' },
+    category: 'language',
+    description: null,
+    creditHours: 4,
+    maxPoints: null,
+    countsTowardGpa: true,
+    order: 3,
+  },
+  {
+    schoolCode: 'GREENHS',
+    code: 'SCI',
+    name: { en: 'Science', ar: 'العلوم' },
+    category: 'science',
+    description: null,
+    creditHours: 3,
+    maxPoints: null,
+    countsTowardGpa: true,
+    order: 4,
+  },
+  {
+    schoolCode: 'GREENHS',
+    code: 'REL',
+    name: { en: 'Islamic Studies', ar: 'التربية الإسلامية' },
+    category: 'religious',
+    description: null,
+    creditHours: 2,
+    maxPoints: null,
+    countsTowardGpa: false,
+    order: 5,
+  },
+  {
+    schoolCode: 'GREENHS',
+    code: 'PE',
+    name: { en: 'Physical Education', ar: 'التربية الرياضية' },
+    category: 'sports',
+    description: null,
+    creditHours: 2,
+    maxPoints: null,
+    countsTowardGpa: true,
+    order: 6,
+  },
+  // ── Blue Valley ──
+  {
+    schoolCode: 'BLUEVA',
+    code: 'MATH',
+    name: { en: 'Mathematics', ar: 'الرياضيات' },
+    category: 'core',
+    description: null,
+    creditHours: null,
+    maxPoints: 100,
+    countsTowardGpa: true,
+    order: 1,
+  },
+  {
+    schoolCode: 'BLUEVA',
+    code: 'ARA',
+    name: { en: 'Arabic', ar: 'العربية' },
+    category: 'language',
+    description: null,
+    creditHours: null,
+    maxPoints: 100,
+    countsTowardGpa: true,
+    order: 2,
+  },
+  {
+    schoolCode: 'BLUEVA',
+    code: 'ENG',
+    name: { en: 'English', ar: 'الإنجليزية' },
+    category: 'language',
+    description: null,
+    creditHours: null,
+    maxPoints: 100,
+    countsTowardGpa: true,
+    order: 3,
+  },
+  {
+    schoolCode: 'BLUEVA',
+    code: 'SCI',
+    name: { en: 'Science', ar: 'العلوم' },
+    category: 'science',
+    description: null,
+    creditHours: null,
+    maxPoints: 100,
+    countsTowardGpa: true,
+    order: 4,
+  },
+] as const;
+
+/**
+ * Curriculum: which grade level (by school + stage English name + order) offers which subject code.
+ */
+export const SEED_GRADE_LEVEL_SUBJECT_LINKS = [
+  // Green Hills — Primary grade 3: core pack
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    subjectCode: 'MATH',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    subjectCode: 'ARA',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    subjectCode: 'ENG',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    subjectCode: 'SCI',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    subjectCode: 'REL',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    subjectCode: 'PE',
+  },
+  // Green Hills — Primary grade 6: same subjects
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 6,
+    subjectCode: 'MATH',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 6,
+    subjectCode: 'ARA',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 6,
+    subjectCode: 'ENG',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 6,
+    subjectCode: 'SCI',
+  },
+  // Green Hills — Secondary grade 10 (first year secondary): no PE in seed
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Secondary',
+    gradeOrder: 1,
+    subjectCode: 'MATH',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Secondary',
+    gradeOrder: 1,
+    subjectCode: 'ARA',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Secondary',
+    gradeOrder: 1,
+    subjectCode: 'ENG',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Secondary',
+    gradeOrder: 1,
+    subjectCode: 'SCI',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Secondary',
+    gradeOrder: 1,
+    subjectCode: 'REL',
+  },
+  // Green Hills — KG 1: light set
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Kindergarten',
+    gradeOrder: 1,
+    subjectCode: 'ARA',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Kindergarten',
+    gradeOrder: 1,
+    subjectCode: 'ENG',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Kindergarten',
+    gradeOrder: 1,
+    subjectCode: 'PE',
+  },
+  // Blue Valley — Primary grade 1
+  {
+    schoolCode: 'BLUEVA',
+    stageName: 'Primary',
+    gradeOrder: 1,
+    subjectCode: 'MATH',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    stageName: 'Primary',
+    gradeOrder: 1,
+    subjectCode: 'ARA',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    stageName: 'Primary',
+    gradeOrder: 1,
+    subjectCode: 'ENG',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    stageName: 'Primary',
+    gradeOrder: 2,
+    subjectCode: 'MATH',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    stageName: 'Primary',
+    gradeOrder: 2,
+    subjectCode: 'ARA',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    stageName: 'Primary',
+    gradeOrder: 2,
+    subjectCode: 'SCI',
+  },
+] as const;
+
+/**
+ * Default assessment profiles (components must sum to 100). Types: EXAM | QUIZ | ASSIGNMENT | ATTENDANCE | BEHAVIOR
+ */
+export const SEED_SUBJECT_ASSESSMENT_PROFILES = [
+  {
+    schoolCode: 'GREENHS',
+    subjectCode: 'MATH',
+    components: [
+      { name: 'Midterm exam', weight: 30, type: 'EXAM' },
+      { name: 'Final exam', weight: 40, type: 'EXAM' },
+      { name: 'Homework', weight: 20, type: 'ASSIGNMENT' },
+      { name: 'Participation', weight: 10, type: 'BEHAVIOR' },
+    ],
+  },
+  {
+    schoolCode: 'GREENHS',
+    subjectCode: 'ARA',
+    components: [
+      { name: 'Written exams', weight: 50, type: 'EXAM' },
+      { name: 'Oral / dictation', weight: 30, type: 'QUIZ' },
+      { name: 'Homework', weight: 20, type: 'ASSIGNMENT' },
+    ],
+  },
+  {
+    schoolCode: 'GREENHS',
+    subjectCode: 'SCI',
+    components: [
+      { name: 'Lab practical', weight: 25, type: 'EXAM' },
+      { name: 'Theory exam', weight: 45, type: 'EXAM' },
+      { name: 'Assignments', weight: 20, type: 'ASSIGNMENT' },
+      { name: 'Attendance', weight: 10, type: 'ATTENDANCE' },
+    ],
+  },
+  {
+    schoolCode: 'BLUEVA',
+    subjectCode: 'MATH',
+    components: [
+      { name: 'Continuous assessment', weight: 40, type: 'ASSIGNMENT' },
+      { name: 'Midterm', weight: 25, type: 'EXAM' },
+      { name: 'Final', weight: 35, type: 'EXAM' },
+    ],
   },
 ] as const;

@@ -87,7 +87,7 @@ describe('SubjectAssessmentProfilesService', () => {
             id: 'p1',
             subjectId: 's1',
             components: [],
-        });
+        } as unknown as SubjectAssessmentProfile);
 
         await service.upsertDefaultProfile(
             's1',

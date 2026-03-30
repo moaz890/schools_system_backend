@@ -4,6 +4,8 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 import { SubjectsService } from './subjects.service';
 import { Subject } from './entities/subject.entity';
 import { SubjectCategory } from './enums/subject-category.enum';
+import { SchoolStrategiesService } from '../../core/school-strategies/school-strategies.service';
+import { CalculationMethod } from '../../core/school-strategies/entities/school-strategy.entity';
 import type { AuthCaller } from '../../core/users/types/auth-caller.type';
 import { UserRole } from '../../../common/enums/user-role.enum';
 
@@ -29,6 +31,12 @@ describe('SubjectsService', () => {
     softRemove: jest.fn(),
   };
 
+  const schoolStrategiesService = {
+    findBySchoolId: jest.fn().mockResolvedValue({
+      calculationMethod: CalculationMethod.CREDIT_HOURS,
+    }),
+  };
+
   const caller: AuthCaller = {
     id: 'user-1',
     role: UserRole.SCHOOL_ADMIN,
@@ -41,6 +49,10 @@ describe('SubjectsService', () => {
       providers: [
         SubjectsService,
         { provide: getRepositoryToken(Subject), useValue: repo },
+        {
+          provide: SchoolStrategiesService,
+          useValue: schoolStrategiesService,
+        },
       ],
     }).compile();
 
@@ -56,6 +68,7 @@ describe('SubjectsService', () => {
           name: { en: 'Math', ar: 'رياضيات' },
           code: 'MATH',
           category: SubjectCategory.CORE,
+          creditHours: 4,
         },
         caller,
       ),
@@ -74,6 +87,7 @@ describe('SubjectsService', () => {
         name: { en: 'Math', ar: 'رياضيات' },
         code: 'math',
         category: SubjectCategory.CORE,
+        creditHours: 5,
       },
       caller,
     );
@@ -89,8 +103,46 @@ describe('SubjectsService', () => {
           name: { en: 'M', ar: 'م' },
           code: 'X',
           category: SubjectCategory.CORE,
+          creditHours: 1,
         },
         { ...caller, schoolId: null },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('create rejects maxPoints when school uses CREDIT_HOURS', async () => {
+    mockQb.getOne.mockResolvedValue(null);
+
+    await expect(
+      service.create(
+        {
+          name: { en: 'Math', ar: 'ر' },
+          code: 'MATH',
+          category: SubjectCategory.CORE,
+          creditHours: 5,
+          maxPoints: 100,
+        },
+        caller,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('create rejects creditHours when school uses TOTAL_POINTS', async () => {
+    schoolStrategiesService.findBySchoolId.mockResolvedValueOnce({
+      calculationMethod: CalculationMethod.TOTAL_POINTS,
+    });
+    mockQb.getOne.mockResolvedValue(null);
+
+    await expect(
+      service.create(
+        {
+          name: { en: 'Math', ar: 'ر' },
+          code: 'MATH',
+          category: SubjectCategory.CORE,
+          creditHours: 5,
+          maxPoints: 100,
+        },
+        caller,
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });

@@ -1,5 +1,6 @@
 /**
- * Seeds 2 schools, super_admin, and school_admin users for local testing.
+ * Seeds 2 schools, super_admin, school_admin users, stages, grade levels,
+ * subjects, grade–subject links, and sample assessment profiles (see seed-data.ts).
  *
  * Usage (from `schools-backend`):
  *   npm run seed
@@ -14,9 +15,12 @@ import {
   SEED_ADMINS,
   SEED_DEFAULT_PASSWORD,
   SEED_GRADE_LEVELS,
+  SEED_GRADE_LEVEL_SUBJECT_LINKS,
   SEED_SCHOOLS,
   SEED_STAGES,
   SEED_STRATEGIES,
+  SEED_SUBJECTS,
+  SEED_SUBJECT_ASSESSMENT_PROFILES,
   SEED_SUPER_ADMIN,
 } from './seed-data';
 
@@ -278,6 +282,162 @@ Create the schema first, then run this script again:
     );
   }
 
+  // ─── Subjects, curriculum links, assessment profiles ─────────────────────
+
+  let subjectsTableMissing = false;
+  try {
+    await client.query('SELECT 1 FROM subjects LIMIT 1');
+  } catch (e: any) {
+    if (e.code === '42P01') {
+      subjectsTableMissing = true;
+      console.warn(
+        '\nSkipping subject seed: table "subjects" does not exist. Run migrations, then npm run seed again.',
+      );
+    } else {
+      throw e;
+    }
+  }
+
+  if (!subjectsTableMissing) {
+    const schoolCodesList = SEED_SCHOOLS.map((s) => s.code);
+
+    const glRows = await client.query(
+      `SELECT gl.id, sch.code AS school_code, st.name->>'en' AS stage_en, gl."order" AS grade_order
+       FROM grade_levels gl
+       INNER JOIN schools sch ON sch.id = gl.school_id AND sch.deleted_at IS NULL
+       INNER JOIN stages st ON st.id = gl.stage_id AND st.deleted_at IS NULL
+       WHERE sch.code = ANY($1::text[]) AND gl.deleted_at IS NULL`,
+      [schoolCodesList],
+    );
+    const gradeKeyToId = new Map<string, string>();
+    for (const row of glRows.rows) {
+      gradeKeyToId.set(
+        `${row.school_code}:${row.stage_en}:${row.grade_order}`,
+        String(row.id),
+      );
+    }
+
+    const subjectKeyToId = new Map<string, string>();
+
+    for (const sub of SEED_SUBJECTS) {
+      const schoolId = codeToSchoolId.get(sub.schoolCode);
+      if (!schoolId) continue;
+
+      const ex = await client.query(
+        `SELECT id FROM subjects WHERE school_id = $1 AND code = $2 AND deleted_at IS NULL`,
+        [schoolId, sub.code],
+      );
+      let subjectId: string;
+      if (ex.rows.length > 0) {
+        subjectId = String(ex.rows[0].id);
+        subjectKeyToId.set(`${sub.schoolCode}:${sub.code}`, subjectId);
+        console.log(
+          `Subject "${sub.code}" (${sub.schoolCode}) already exists, skipping insert.`,
+        );
+        continue;
+      }
+
+      const ins = await client.query(
+        `INSERT INTO subjects (school_id, name, code, category, description, credit_hours, max_points, counts_toward_gpa, "order", created_at, updated_at)
+         VALUES ($1, $2::jsonb, $3, $4, $5::jsonb, $6, $7, $8, $9, NOW(), NOW())
+         RETURNING id`,
+        [
+          schoolId,
+          JSON.stringify(sub.name),
+          sub.code,
+          sub.category,
+          sub.description != null
+            ? JSON.stringify(sub.description)
+            : null,
+          sub.creditHours,
+          sub.maxPoints,
+          sub.countsTowardGpa,
+          sub.order,
+        ],
+      );
+      subjectId = String(ins.rows[0].id);
+      subjectKeyToId.set(`${sub.schoolCode}:${sub.code}`, subjectId);
+      console.log(`Created subject "${sub.code}" for ${sub.schoolCode}`);
+    }
+
+    for (const link of SEED_GRADE_LEVEL_SUBJECT_LINKS) {
+      const gk = `${link.schoolCode}:${link.stageName}:${link.gradeOrder}`;
+      const sk = `${link.schoolCode}:${link.subjectCode}`;
+      const gradeLevelId = gradeKeyToId.get(gk);
+      const subjectId = subjectKeyToId.get(sk);
+      if (!gradeLevelId || !subjectId) {
+        console.warn(
+          `Skip curriculum link: grade or subject missing (${gk} → ${link.subjectCode})`,
+        );
+        continue;
+      }
+      const dup = await client.query(
+        `SELECT id FROM grade_level_subjects WHERE grade_level_id = $1 AND subject_id = $2 AND deleted_at IS NULL`,
+        [gradeLevelId, subjectId],
+      );
+      if (dup.rows.length > 0) continue;
+
+      await client.query(
+        `INSERT INTO grade_level_subjects (grade_level_id, subject_id, created_at, updated_at)
+         VALUES ($1, $2, NOW(), NOW())`,
+        [gradeLevelId, subjectId],
+      );
+      console.log(
+        `Linked subject ${link.subjectCode} → ${link.schoolCode} ${link.stageName} (order ${link.gradeOrder})`,
+      );
+    }
+
+    let profilesTableMissing = false;
+    try {
+      await client.query('SELECT 1 FROM subject_assessment_profiles LIMIT 1');
+    } catch (e: any) {
+      if (e.code === '42P01') {
+        profilesTableMissing = true;
+        console.warn(
+          'Skipping assessment profile seed: table "subject_assessment_profiles" missing.',
+        );
+      } else {
+        throw e;
+      }
+    }
+
+    if (!profilesTableMissing) {
+      for (const prof of SEED_SUBJECT_ASSESSMENT_PROFILES) {
+        const sk = `${prof.schoolCode}:${prof.subjectCode}`;
+        const subjectId = subjectKeyToId.get(sk);
+        if (!subjectId) {
+          console.warn(
+            `Skip profile: subject ${prof.subjectCode} (${prof.schoolCode}) not found`,
+          );
+          continue;
+        }
+        const existing = await client.query(
+          `SELECT id FROM subject_assessment_profiles WHERE subject_id = $1 AND grade_level_id IS NULL AND academic_year_id IS NULL AND deleted_at IS NULL`,
+          [subjectId],
+        );
+        const compJson = JSON.stringify(prof.components);
+        if (existing.rows.length > 0) {
+          await client.query(
+            `UPDATE subject_assessment_profiles SET components = $1::jsonb, updated_at = NOW() WHERE id = $2`,
+            [compJson, existing.rows[0].id],
+          );
+          console.log(
+            `Updated assessment profile for ${prof.subjectCode} (${prof.schoolCode})`,
+          );
+        } else {
+          await client.query(
+            `INSERT INTO subject_assessment_profiles (subject_id, grade_level_id, academic_year_id, components, created_at, updated_at)
+             VALUES ($1, NULL, NULL, $2::jsonb, NOW(), NOW())`,
+            [subjectId, compJson],
+          );
+          console.log(
+            `Created assessment profile for ${prof.subjectCode} (${prof.schoolCode})`,
+          );
+        }
+      }
+    }
+  }
+
   // ─── Summary ─────────────────────────────────────────────────────────────
 
   console.log('\n--- Login (POST /api/v1/auth/login) ---');
@@ -286,6 +446,12 @@ Create the schema first, then run this script again:
   );
   console.log(`GREENHS admins: admin@… / deputy@… + "schoolCode": "GREENHS"`);
   console.log(`BLUEVA admins:  admin@… / deputy@… + "schoolCode": "BLUEVA"`);
+  console.log(
+    '\nSubjects: GET /api/v1/subjects · curriculum: GET /api/v1/grade-levels/:id/subjects',
+  );
+  console.log(
+    'Assessment profile: GET|PUT /api/v1/subjects/:id/assessment-profile',
+  );
 
   await client.end();
 }

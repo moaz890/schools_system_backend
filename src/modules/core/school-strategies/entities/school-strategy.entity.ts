@@ -5,7 +5,6 @@ import { School } from '../../schools/entities/school.entity';
 export enum CalculationMethod {
   CREDIT_HOURS = 'CREDIT_HOURS',
   TOTAL_POINTS = 'TOTAL_POINTS',
-  CUMULATIVE_AVERAGE = 'CUMULATIVE_AVERAGE',
 }
 
 export enum PromotionPolicy {
@@ -43,8 +42,8 @@ export class SchoolStrategy extends BaseEntity {
   /**
    * How grades are calculated school-wide.
    * CREDIT_HOURS: weighted by credit hours per subject.
-   * TOTAL_POINTS: raw points out of a total maximum.
-   * CUMULATIVE_AVERAGE: simple average of all subjects.
+   * TOTAL_POINTS: raw points out of a total maximum per subject.
+   * (Simple cumulative average may be added later — not available in the API yet.)
    */
   @Column({
     name: 'calculation_method',

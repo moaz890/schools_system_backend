@@ -47,7 +47,8 @@ export class CreateSubjectDto {
   description?: LocalizedStringDto;
 
   @ApiPropertyOptional({
-    description: 'Used when school uses credit-hour weighted averages',
+    description:
+      'Required when the school strategy uses credit-hour weighting; omit when the school uses total points.',
   })
   @IsOptional()
   @IsNumber()
@@ -55,7 +56,8 @@ export class CreateSubjectDto {
   creditHours?: number;
 
   @ApiPropertyOptional({
-    description: 'Used when school uses total-points aggregation',
+    description:
+      'Required when the school strategy uses total-points aggregation; omit when the school uses credit hours.',
   })
   @IsOptional()
   @IsInt()
