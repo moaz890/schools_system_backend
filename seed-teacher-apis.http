@@ -1,0 +1,217 @@
+# =============================================================================
+# Quick API tests — teacher specializations & teacher assignments (seed data)
+# =============================================================================
+# Uses VS Code / Cursor "REST Client" extension (humao.rest-client), or similar.
+#
+# Flow: 1) Run login request → copy accessToken into @accessToken below
+#       2) Run the SQL block (psql or DB GUI) with school code GREENHS or BLUEVA
+#       3) Paste UUIDs into @variables, then run the API requests
+#
+# Global prefix: /api/v1  (see src/main.ts)
+# All routes below require school_admin except /auth/login.
+# =============================================================================
+
+@host = http://localhost:3000
+@api = {{host}}/api/v1
+
+# Paste from login response JSON: "accessToken": "..."
+@accessToken = REPLACE_WITH_JWT
+
+@schoolCode = GREENHS
+
+# Fill from SQL cheat sheet (same school as @schoolCode)
+@teacherId = 00000000-0000-0000-0000-000000000000
+@subjectId = 00000000-0000-0000-0000-000000000000
+@stagePrimaryId = 00000000-0000-0000-0000-000000000000
+@classId = 00000000-0000-0000-0000-000000000000
+@assignmentId = 00000000-0000-0000-0000-000000000000
+
+### ---------------------------------------------------------------------------
+### Auth — GREENHS school admin (SEED_ADMINS)
+### Body: email, password, schoolCode (required for school users)
+### ---------------------------------------------------------------------------
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@greenhs.test",
+  "password": "SchoolAdmin123!",
+  "schoolCode": "GREENHS"
+}
+
+### ---------------------------------------------------------------------------
+### Auth — BLUEVA school admin
+### ---------------------------------------------------------------------------
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@blueva.test",
+  "password": "SchoolAdmin123!",
+  "schoolCode": "BLUEVA"
+}
+
+### ---------------------------------------------------------------------------
+### SQL — resolve UUIDs after seed (run against your DB; set $SCHOOL = GREENHS or BLUEVA)
+### ---------------------------------------------------------------------------
+# -- School id
+# SELECT id FROM schools WHERE code = 'GREENHS';
+#
+# -- Teachers (national_id matches seed-data SEED_TEACHERS)
+# SELECT id, email, national_id FROM users
+# WHERE school_id = (SELECT id FROM schools WHERE code = 'GREENHS') AND role = 'teacher'
+# ORDER BY email;
+#
+# -- Subjects (code matches SEED_SUBJECTS per school)
+# SELECT id, code, name->>'en' AS name_en FROM subjects
+# WHERE school_id = (SELECT id FROM schools WHERE code = 'GREENHS')
+# ORDER BY code;
+#
+# -- Primary stage id (for allowedStageIds / ?stageId=)
+# SELECT id, name->>'en' AS stage_en FROM stages
+# WHERE school_id = (SELECT id FROM schools WHERE code = 'GREENHS')
+# ORDER BY "order";
+#
+# -- Classes (matches SEED_CLASSES: stage + grade order + section)
+# SELECT c.id, c.name->>'en' AS class_name, gl.name->>'en' AS grade_en
+# FROM classes c
+# JOIN grade_levels gl ON gl.id = c.grade_level_id
+# JOIN stages st ON st.id = gl.stage_id
+# WHERE c.school_id = (SELECT id FROM schools WHERE code = 'GREENHS')
+#   AND st.name->>'en' = 'Primary'
+# ORDER BY class_name;
+#
+# -- Existing teacher assignments (pick id for PATCH .../end)
+# SELECT ta.id, ta.is_active, u.email, s.code AS subject_code, c.name->>'en' AS class_name
+# FROM teacher_assignments ta
+# JOIN users u ON u.id = ta.teacher_id
+# JOIN subjects s ON s.id = ta.subject_id
+# JOIN classes c ON c.id = ta.class_id
+# WHERE ta.school_id = (SELECT id FROM schools WHERE code = 'GREENHS')
+# ORDER BY ta.created_at;
+
+### ---------------------------------------------------------------------------
+### Teacher specializations — PUT upsert
+### Path params: teacherId, subjectId
+### Body (optional): allowedStageIds — JSON array of stage UUIDs; omit/null/[] = all stages
+### Body (optional): teacherId, subjectId — if provided must match the URL params
+### Seed examples:
+###   Ahmed (GREENHS-001): MATH all stages; ARA Primary-only
+###   Fatima (002): ARA, ENG Primary; Sami (003): SCI, MATH Primary
+### ---------------------------------------------------------------------------
+PUT {{api}}/teacher-specializations/{{teacherId}}/{{subjectId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "teacherId": "{{teacherId}}",
+  "subjectId": "{{subjectId}}",
+  "allowedStageIds": ["{{stagePrimaryId}}"]
+}
+
+### Teacher specializations — PUT clear stage restriction (all stages)
+PUT {{api}}/teacher-specializations/{{teacherId}}/{{subjectId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{}
+
+### ---------------------------------------------------------------------------
+### Teacher specializations — GET eligible teachers for subject
+### Path param: subjectId
+### Query (optional): stageId — filter to teachers allowed for that stage
+### ---------------------------------------------------------------------------
+GET {{api}}/teacher-specializations/{{subjectId}}/teachers
+Authorization: Bearer {{accessToken}}
+
+### Teacher specializations — GET subjects for a teacher
+### Path param: teacherId
+GET {{api}}/teacher-specializations/teachers/{{teacherId}}/subjects
+Authorization: Bearer {{accessToken}}
+
+### Eligible teachers — with stage filter (use Primary stage UUID)
+GET {{api}}/teacher-specializations/{{subjectId}}/teachers?stageId={{stagePrimaryId}}
+Authorization: Bearer {{accessToken}}
+
+### ---------------------------------------------------------------------------
+### Teacher assignments — POST create
+### Body: classId, teacherId, subjectId (all UUIDs); startDate optional (ISO 8601)
+### Preconditions (service validates): teacher in school, curriculum link for class grade+subject,
+### specialization covers class stage (if specialization is stage-limited), no duplicate active
+### same teacher+class+subject (co-teachers = different teachers OK — seed has two MATH on G3A).
+### If seed already inserted the same triple, this returns 400 — use another class/subject or end first.
+### ---------------------------------------------------------------------------
+POST {{api}}/teacher-assignments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "classId": "{{classId}}",
+  "teacherId": "{{teacherId}}",
+  "subjectId": "{{subjectId}}",
+  "startDate": "2025-09-01T00:00:00.000Z"
+}
+
+### Teacher assignments — POST minimal body (startDate omitted → server default)
+POST {{api}}/teacher-assignments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "classId": "{{classId}}",
+  "teacherId": "{{teacherId}}",
+  "subjectId": "{{subjectId}}"
+}
+
+### ---------------------------------------------------------------------------
+### Teacher assignments — PATCH end
+### Path param: id (assignment UUID)
+### Body (optional): endDate — ISO 8601; omit = now
+### ---------------------------------------------------------------------------
+PATCH {{api}}/teacher-assignments/{{assignmentId}}/end
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "endDate": "2026-01-15T12:00:00.000Z"
+}
+
+### Teacher assignments — PATCH end (default endDate = now)
+PATCH {{api}}/teacher-assignments/{{assignmentId}}/end
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{}
+
+### ---------------------------------------------------------------------------
+### Teacher assignments — GET list for class
+### Path param: classId
+### ---------------------------------------------------------------------------
+GET {{api}}/teacher-assignments/classes/{{classId}}
+Authorization: Bearer {{accessToken}}
+
+# =============================================================================
+# Seed reference (seed-data.ts) — no UUIDs; use SQL above after npm run seed
+# =============================================================================
+# Password (all seeded school users): SchoolAdmin123!
+#
+# GREENHS admins:     admin@greenhs.test
+# BLUEVA admins:      admin@blueva.test
+#
+# GREENHS teachers:
+#   SEED-NID-TEACHER-GREENHS-001  teacher.ahmed@greenhs.test   (homeroom G3A)
+#   SEED-NID-TEACHER-GREENHS-002  teacher.fatima@greenhs.test  (homeroom G3B)
+#   SEED-NID-TEACHER-GREENHS-003  teacher.sami@greenhs.test    (homeroom G4A)
+# BLUEVA teachers:
+#   ...-BLUEVA-001  teacher.nora@blueva.test
+#   ...-BLUEVA-002  teacher.faisal@blueva.test
+#   ...-BLUEVA-003  teacher.huda@blueva.test
+#
+# GREENHS classes: Primary G3 A/B, Primary G4 A
+# BLUEVA classes:  Primary G2 A/B, Primary G3 A
+#
+# Subject codes (per school): MATH, ARA, ENG, SCI, REL (GREENHS only), PE (GREENHS only)
+#
+# SEED_TEACHER_SPECIALIZATIONS: e.g. Ahmed+MATH all stages; Ahmed+ARA Primary-only; ...
+# SEED_TEACHER_ASSIGNMENTS: e.g. GREENHS G3A MATH co-taught by Ahmed + Sami; ...
+# =============================================================================

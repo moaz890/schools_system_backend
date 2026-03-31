@@ -1,7 +1,8 @@
 /**
  * Seeds 2 schools, super_admin, school_admin users, stages, grade levels,
  * academic years, teachers, students, classes, sample enrollments,
- * subjects, grade–subject links, and assessment profiles (see seed-data.ts).
+ * subjects, grade–subject links, assessment profiles,
+ * teacher specializations, and teacher assignments (see seed-data.ts).
  *
  * Usage (from `schools-backend`):
  *   npm run seed
@@ -28,6 +29,8 @@ import {
   SEED_SUBJECTS,
   SEED_SUBJECT_ASSESSMENT_PROFILES,
   SEED_SUPER_ADMIN,
+  SEED_TEACHER_ASSIGNMENTS,
+  SEED_TEACHER_SPECIALIZATIONS,
   SEED_TEACHERS,
 } from './seed-data';
 
@@ -787,6 +790,12 @@ Create the schema first, then run this script again:
   );
   console.log(
     'Enrollments: POST /api/v1/enrollments · GET /api/v1/enrollments/classes/:classId/students',
+  );
+  console.log(
+    'Teacher specializations: PUT /api/v1/teacher-specializations/:teacherId/:subjectId',
+  );
+  console.log(
+    'Teacher assignments: POST /api/v1/teacher-assignments · GET /api/v1/teacher-assignments/classes/:classId',
   );
 
   await client.end();

@@ -317,7 +317,10 @@ export const SEED_ACADEMIC_YEARS = [
   },
 ] as const;
 
-/** Homeroom teachers — `role` teacher; one per seeded class (unique homeroom per year). */
+/**
+ * Homeroom teachers — one distinct teacher per seeded class (same teacher cannot be homeroom
+ * for two classes in the same academic year).
+ */
 export const SEED_TEACHERS = [
   {
     schoolCode: 'GREENHS',
@@ -326,10 +329,41 @@ export const SEED_TEACHERS = [
     nationalId: 'SEED-NID-TEACHER-GREENHS-001',
   },
   {
+    schoolCode: 'GREENHS',
+    email: 'teacher.fatima@greenhs.test',
+    name: { en: 'Fatima Al-Zahrani', ar: 'فاطمة الزهراني' },
+    nationalId: 'SEED-NID-TEACHER-GREENHS-002',
+  },
+  {
+    schoolCode: 'GREENHS',
+    email: 'teacher.sami@greenhs.test',
+    name: { en: 'Sami Al-Otaibi', ar: 'سامي العتيبي' },
+    nationalId: 'SEED-NID-TEACHER-GREENHS-003',
+  },
+  /** Extra teacher (not a homeroom teacher in SEED_CLASSES). */
+  {
+    schoolCode: 'GREENHS',
+    email: 'teacher.noor@greenhs.test',
+    name: { en: 'Noor Al-Farsi', ar: 'نور الفارسي' },
+    nationalId: 'SEED-NID-TEACHER-GREENHS-004',
+  },
+  {
     schoolCode: 'BLUEVA',
     email: 'teacher.nora@blueva.test',
     name: { en: 'Nora Al-Qahtani', ar: 'نورة القحطاني' },
     nationalId: 'SEED-NID-TEACHER-BLUEVA-001',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    email: 'teacher.faisal@blueva.test',
+    name: { en: 'Faisal Al-Dosari', ar: 'فيصل الدوسري' },
+    nationalId: 'SEED-NID-TEACHER-BLUEVA-002',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    email: 'teacher.huda@blueva.test',
+    name: { en: 'Huda Al-Shammari', ar: 'هدى الشمري' },
+    nationalId: 'SEED-NID-TEACHER-BLUEVA-003',
   },
 ] as const;
 
@@ -347,10 +381,48 @@ export const SEED_STUDENTS = [
     nationalId: 'SEED-NID-STU-GREENHS-002',
   },
   {
+    schoolCode: 'GREENHS',
+    email: 'student.three@greenhs.test',
+    name: { en: 'Omar Khaled', ar: 'عمر خالد' },
+    nationalId: 'SEED-NID-STU-GREENHS-003',
+  },
+  {
+    schoolCode: 'GREENHS',
+    email: 'student.four@greenhs.test',
+    name: { en: 'Nour Hafez', ar: 'نور حافظ' },
+    nationalId: 'SEED-NID-STU-GREENHS-004',
+  },
+  /** No sample enrollment — use for POST /enrollments and placement checks. */
+  {
+    schoolCode: 'GREENHS',
+    email: 'student.unenrolled@greenhs.test',
+    name: { en: 'Tariq Omar', ar: 'طارق عمر' },
+    nationalId: 'SEED-NID-STU-GREENHS-005',
+  },
+  {
     schoolCode: 'BLUEVA',
     email: 'student.one@blueva.test',
     name: { en: 'Khalid Saeed', ar: 'خالد سعيد' },
     nationalId: 'SEED-NID-STU-BLUEVA-001',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    email: 'student.two@blueva.test',
+    name: { en: 'Maha Al-Rashid', ar: 'مها الرشيد' },
+    nationalId: 'SEED-NID-STU-BLUEVA-002',
+  },
+  /** No sample enrollment — use for manual enrollment tests. */
+  {
+    schoolCode: 'BLUEVA',
+    email: 'student.unenrolled@blueva.test',
+    name: { en: 'Sultan Fahad', ar: 'سلطان فهد' },
+    nationalId: 'SEED-NID-STU-BLUEVA-003',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    email: 'student.four@blueva.test',
+    name: { en: 'Reem Abdullah', ar: 'ريم عبدالله' },
+    nationalId: 'SEED-NID-STU-BLUEVA-004',
   },
 ] as const;
 
@@ -369,6 +441,24 @@ export const SEED_CLASSES = [
     homeroomTeacherNationalId: 'SEED-NID-TEACHER-GREENHS-001',
   },
   {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    sectionLetter: 'B',
+    name: { en: 'Grade 3 B', ar: 'الصف 3 ب' },
+    capacity: 32,
+    homeroomTeacherNationalId: 'SEED-NID-TEACHER-GREENHS-002',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 4,
+    sectionLetter: 'A',
+    name: { en: 'Grade 4 A', ar: 'الصف 4 أ' },
+    capacity: 30,
+    homeroomTeacherNationalId: 'SEED-NID-TEACHER-GREENHS-003',
+  },
+  {
     schoolCode: 'BLUEVA',
     stageName: 'Primary',
     gradeOrder: 2,
@@ -377,10 +467,29 @@ export const SEED_CLASSES = [
     capacity: 28,
     homeroomTeacherNationalId: 'SEED-NID-TEACHER-BLUEVA-001',
   },
+  {
+    schoolCode: 'BLUEVA',
+    stageName: 'Primary',
+    gradeOrder: 2,
+    sectionLetter: 'B',
+    name: { en: 'Grade 2 B', ar: 'الصف 2 ب' },
+    capacity: 26,
+    homeroomTeacherNationalId: 'SEED-NID-TEACHER-BLUEVA-002',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    sectionLetter: 'A',
+    name: { en: 'Grade 3 A', ar: 'الصف 3 أ' },
+    capacity: 30,
+    homeroomTeacherNationalId: 'SEED-NID-TEACHER-BLUEVA-003',
+  },
 ] as const;
 
 /**
- * One active enrollment per student (matches class grade); creates `student_grade_levels` row if missing.
+ * Sample enrollments (one active enrollment per student here). Omitted students stay unenrolled
+ * for manual API tests. Two students in GREENHS Grade 3 A exercises class student lists.
  */
 export const SEED_SAMPLE_ENROLLMENTS = [
   {
@@ -391,10 +500,45 @@ export const SEED_SAMPLE_ENROLLMENTS = [
     sectionLetter: 'A',
   },
   {
+    schoolCode: 'GREENHS',
+    studentNationalId: 'SEED-NID-STU-GREENHS-004',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    sectionLetter: 'A',
+  },
+  {
+    schoolCode: 'GREENHS',
+    studentNationalId: 'SEED-NID-STU-GREENHS-002',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    sectionLetter: 'B',
+  },
+  {
+    schoolCode: 'GREENHS',
+    studentNationalId: 'SEED-NID-STU-GREENHS-003',
+    stageName: 'Primary',
+    gradeOrder: 4,
+    sectionLetter: 'A',
+  },
+  {
     schoolCode: 'BLUEVA',
     studentNationalId: 'SEED-NID-STU-BLUEVA-001',
     stageName: 'Primary',
     gradeOrder: 2,
+    sectionLetter: 'A',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    studentNationalId: 'SEED-NID-STU-BLUEVA-002',
+    stageName: 'Primary',
+    gradeOrder: 2,
+    sectionLetter: 'B',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    studentNationalId: 'SEED-NID-STU-BLUEVA-004',
+    stageName: 'Primary',
+    gradeOrder: 3,
     sectionLetter: 'A',
   },
 ] as const;
@@ -570,6 +714,43 @@ export const SEED_GRADE_LEVEL_SUBJECT_LINKS = [
     gradeOrder: 3,
     subjectCode: 'PE',
   },
+  // Green Hills — Primary grade 4 (seed classes include Grade 4 A)
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 4,
+    subjectCode: 'MATH',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 4,
+    subjectCode: 'ARA',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 4,
+    subjectCode: 'ENG',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 4,
+    subjectCode: 'SCI',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 4,
+    subjectCode: 'REL',
+  },
+  {
+    schoolCode: 'GREENHS',
+    stageName: 'Primary',
+    gradeOrder: 4,
+    subjectCode: 'PE',
+  },
   // Green Hills — Primary grade 6: same subjects
   {
     schoolCode: 'GREENHS',
@@ -681,6 +862,199 @@ export const SEED_GRADE_LEVEL_SUBJECT_LINKS = [
     stageName: 'Primary',
     gradeOrder: 2,
     subjectCode: 'SCI',
+  },
+  // Blue Valley — Primary grade 3 (seed classes include Grade 3 A)
+  {
+    schoolCode: 'BLUEVA',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    subjectCode: 'MATH',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    subjectCode: 'ARA',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    subjectCode: 'ENG',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    subjectCode: 'SCI',
+  },
+] as const;
+
+/**
+ * Teacher can teach subject in school. `restrictToStageNameEn` matches `stages.name->>'en'` (e.g. Primary);
+ * omit/null → allowed in all stages (`allowed_stage_ids` NULL).
+ */
+export const SEED_TEACHER_SPECIALIZATIONS = [
+  {
+    schoolCode: 'GREENHS',
+    teacherNationalId: 'SEED-NID-TEACHER-GREENHS-001',
+    subjectCode: 'MATH',
+    restrictToStageNameEn: null,
+  },
+  {
+    schoolCode: 'GREENHS',
+    teacherNationalId: 'SEED-NID-TEACHER-GREENHS-001',
+    subjectCode: 'ARA',
+    restrictToStageNameEn: 'Primary',
+  },
+  {
+    schoolCode: 'GREENHS',
+    teacherNationalId: 'SEED-NID-TEACHER-GREENHS-002',
+    subjectCode: 'ARA',
+    restrictToStageNameEn: 'Primary',
+  },
+  {
+    schoolCode: 'GREENHS',
+    teacherNationalId: 'SEED-NID-TEACHER-GREENHS-002',
+    subjectCode: 'ENG',
+    restrictToStageNameEn: 'Primary',
+  },
+  {
+    schoolCode: 'GREENHS',
+    teacherNationalId: 'SEED-NID-TEACHER-GREENHS-003',
+    subjectCode: 'SCI',
+    restrictToStageNameEn: 'Primary',
+  },
+  {
+    schoolCode: 'GREENHS',
+    teacherNationalId: 'SEED-NID-TEACHER-GREENHS-003',
+    subjectCode: 'MATH',
+    restrictToStageNameEn: 'Primary',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    teacherNationalId: 'SEED-NID-TEACHER-BLUEVA-001',
+    subjectCode: 'MATH',
+    restrictToStageNameEn: 'Primary',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    teacherNationalId: 'SEED-NID-TEACHER-BLUEVA-001',
+    subjectCode: 'ARA',
+    restrictToStageNameEn: 'Primary',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    teacherNationalId: 'SEED-NID-TEACHER-BLUEVA-002',
+    subjectCode: 'ENG',
+    restrictToStageNameEn: 'Primary',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    teacherNationalId: 'SEED-NID-TEACHER-BLUEVA-003',
+    subjectCode: 'MATH',
+    restrictToStageNameEn: 'Primary',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    teacherNationalId: 'SEED-NID-TEACHER-BLUEVA-003',
+    subjectCode: 'SCI',
+    restrictToStageNameEn: 'Primary',
+  },
+] as const;
+
+/**
+ * Teaching assignments (class + subject + teacher). Class resolved like SEED_CLASSES / enrollments.
+ */
+export const SEED_TEACHER_ASSIGNMENTS = [
+  // GREENHS Grade 3 A — co-teach MATH
+  {
+    schoolCode: 'GREENHS',
+    teacherNationalId: 'SEED-NID-TEACHER-GREENHS-001',
+    subjectCode: 'MATH',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    sectionLetter: 'A',
+  },
+  {
+    schoolCode: 'GREENHS',
+    teacherNationalId: 'SEED-NID-TEACHER-GREENHS-003',
+    subjectCode: 'MATH',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    sectionLetter: 'A',
+  },
+  {
+    schoolCode: 'GREENHS',
+    teacherNationalId: 'SEED-NID-TEACHER-GREENHS-001',
+    subjectCode: 'ARA',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    sectionLetter: 'A',
+  },
+  {
+    schoolCode: 'GREENHS',
+    teacherNationalId: 'SEED-NID-TEACHER-GREENHS-002',
+    subjectCode: 'ARA',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    sectionLetter: 'B',
+  },
+  {
+    schoolCode: 'GREENHS',
+    teacherNationalId: 'SEED-NID-TEACHER-GREENHS-003',
+    subjectCode: 'SCI',
+    stageName: 'Primary',
+    gradeOrder: 4,
+    sectionLetter: 'A',
+  },
+  {
+    schoolCode: 'GREENHS',
+    teacherNationalId: 'SEED-NID-TEACHER-GREENHS-003',
+    subjectCode: 'MATH',
+    stageName: 'Primary',
+    gradeOrder: 4,
+    sectionLetter: 'A',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    teacherNationalId: 'SEED-NID-TEACHER-BLUEVA-001',
+    subjectCode: 'MATH',
+    stageName: 'Primary',
+    gradeOrder: 2,
+    sectionLetter: 'A',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    teacherNationalId: 'SEED-NID-TEACHER-BLUEVA-001',
+    subjectCode: 'ARA',
+    stageName: 'Primary',
+    gradeOrder: 2,
+    sectionLetter: 'A',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    teacherNationalId: 'SEED-NID-TEACHER-BLUEVA-002',
+    subjectCode: 'ENG',
+    stageName: 'Primary',
+    gradeOrder: 2,
+    sectionLetter: 'B',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    teacherNationalId: 'SEED-NID-TEACHER-BLUEVA-003',
+    subjectCode: 'MATH',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    sectionLetter: 'A',
+  },
+  {
+    schoolCode: 'BLUEVA',
+    teacherNationalId: 'SEED-NID-TEACHER-BLUEVA-003',
+    subjectCode: 'SCI',
+    stageName: 'Primary',
+    gradeOrder: 3,
+    sectionLetter: 'A',
   },
 ] as const;
 

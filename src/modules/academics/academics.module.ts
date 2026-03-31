@@ -4,10 +4,18 @@ import { GradeLevelsModule } from './grade-levels/grade-levels.module';
 import { ClassesModule } from './classes/classes.module';
 import { SubjectsModule } from './subjects/subjects.module';
 import { EnrollmentsModule } from './enrollments/enrollments.module';
+import { TeacherAssignmentsModule } from './teacher-assignments/teacher-assignments.module';
 import { StageGradeLevelsController } from './stages/stage-grade-levels.controller';
 
 @Module({
-  imports: [StagesModule, GradeLevelsModule, ClassesModule, SubjectsModule, EnrollmentsModule],
+  imports: [
+    StagesModule,
+    GradeLevelsModule,
+    ClassesModule,
+    SubjectsModule,
+    EnrollmentsModule,
+    TeacherAssignmentsModule,
+  ],
   controllers: [StageGradeLevelsController],
 })
 export class AcademicsModule {}
