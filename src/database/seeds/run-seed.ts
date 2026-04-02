@@ -2,7 +2,8 @@
  * Seeds 2 schools, super_admin, school_admin users, stages, grade levels,
  * academic years, teachers, students, classes, sample enrollments,
  * subjects, grade–subject links, assessment profiles,
- * teacher specializations, and teacher assignments (see seed-data.ts).
+ * LMS courses (one per class × curriculum subject), and references
+ * teacher specializations / teacher assignments in seed-data.ts.
  *
  * Usage (from `schools-backend`):
  *   npm run seed
@@ -355,13 +356,7 @@ Create the schema first, then run this script again:
         `INSERT INTO academic_years (school_id, name, start_date, end_date, is_current, created_at, updated_at)
          VALUES ($1, $2::jsonb, $3, $4, $5, NOW(), NOW())
          RETURNING id`,
-        [
-          schoolId,
-          JSON.stringify(y.name),
-          y.startDate,
-          y.endDate,
-          y.isCurrent,
-        ],
+        [schoolId, JSON.stringify(y.name), y.startDate, y.endDate, y.isCurrent],
       );
       const yid = String(ins.rows[0].id);
       schoolCodeToAcademicYearId.set(y.schoolCode, yid);
@@ -425,9 +420,7 @@ Create the schema first, then run this script again:
       ],
     );
     nationalIdToUserId.set(opts.nationalId, String(ins.rows[0].id));
-    console.log(
-      `Created ${opts.role} ${opts.email} for ${opts.schoolCode}`,
-    );
+    console.log(`Created ${opts.role} ${opts.email} for ${opts.schoolCode}`);
   }
 
   if (!academicYearsTableMissing) {
@@ -478,7 +471,9 @@ Create the schema first, then run this script again:
       const schoolId = codeToSchoolId.get(c.schoolCode);
       const yearId = schoolCodeToAcademicYearId.get(c.schoolCode);
       if (!schoolId || !yearId) {
-        console.warn(`Skip class seed: school or year missing (${c.schoolCode})`);
+        console.warn(
+          `Skip class seed: school or year missing (${c.schoolCode})`,
+        );
         continue;
       }
       const gk = `${c.schoolCode}:${c.stageName}:${c.gradeOrder}`;
@@ -530,9 +525,7 @@ Create the schema first, then run this script again:
         `${c.schoolCode}:${c.stageName}:${c.gradeOrder}:${c.sectionLetter}`,
         cid,
       );
-      console.log(
-        `Created class ${c.name.en} (${c.schoolCode}) id=${cid}`,
-      );
+      console.log(`Created class ${c.name.en} (${c.schoolCode}) id=${cid}`);
     }
   }
 
@@ -679,9 +672,7 @@ Create the schema first, then run this script again:
           JSON.stringify(sub.name),
           sub.code,
           sub.category,
-          sub.description != null
-            ? JSON.stringify(sub.description)
-            : null,
+          sub.description != null ? JSON.stringify(sub.description) : null,
           sub.creditHours,
           sub.maxPoints,
           sub.countsTowardGpa,
@@ -769,6 +760,179 @@ Create the schema first, then run this script again:
         }
       }
     }
+
+    // ─── LMS courses (one per class × curriculum subject for that grade) ───
+
+    let coursesTableMissing = false;
+    try {
+      await client.query('SELECT 1 FROM courses LIMIT 1');
+    } catch (e: any) {
+      if (e.code === '42P01') {
+        coursesTableMissing = true;
+        console.warn(
+          '\nSkipping LMS courses seed: table "courses" does not exist. Run migrations / synchronize, then npm run seed again.',
+        );
+      } else {
+        throw e;
+      }
+    }
+
+    if (
+      !coursesTableMissing &&
+      !academicYearsTableMissing &&
+      !classesTableMissing
+    ) {
+      const gradeCurriculumSubjects = new Map<string, Set<string>>();
+      for (const link of SEED_GRADE_LEVEL_SUBJECT_LINKS) {
+        const gk = `${link.schoolCode}:${link.stageName}:${link.gradeOrder}`;
+        if (!gradeCurriculumSubjects.has(gk)) {
+          gradeCurriculumSubjects.set(gk, new Set());
+        }
+        gradeCurriculumSubjects.get(gk)!.add(link.subjectCode);
+      }
+
+      const teachersBySchool = new Map<string, string[]>();
+      for (const t of SEED_TEACHERS) {
+        if (!teachersBySchool.has(t.schoolCode)) {
+          teachersBySchool.set(t.schoolCode, []);
+        }
+        teachersBySchool.get(t.schoolCode)!.push(t.nationalId);
+      }
+
+      let lmsInserted = 0;
+      let lmsSkipped = 0;
+      let courseSeq = 0;
+
+      for (const clsRow of SEED_CLASSES) {
+        const schoolId = codeToSchoolId.get(clsRow.schoolCode);
+        if (!schoolId) continue;
+
+        const ck = `${clsRow.schoolCode}:${clsRow.stageName}:${clsRow.gradeOrder}:${clsRow.sectionLetter}`;
+        const classId = classCompositeKeyToId.get(ck);
+        if (!classId) {
+          console.warn(`Skip LMS courses: class not resolved (${ck})`);
+          continue;
+        }
+
+        const gk = `${clsRow.schoolCode}:${clsRow.stageName}:${clsRow.gradeOrder}`;
+        const subjectCodes = Array.from(gradeCurriculumSubjects.get(gk) ?? []);
+        if (subjectCodes.length === 0) {
+          console.warn(`Skip LMS courses: no curriculum subjects for grade (${gk})`);
+          continue;
+        }
+
+        const teacherNids = teachersBySchool.get(clsRow.schoolCode) ?? [];
+        if (teacherNids.length === 0) continue;
+
+        const yearRow = SEED_ACADEMIC_YEARS.find(
+          (y) => y.schoolCode === clsRow.schoolCode,
+        );
+        const yearStart = yearRow
+          ? new Date(yearRow.startDate).getTime()
+          : Date.now();
+        const yearEnd = yearRow
+          ? new Date(yearRow.endDate).getTime()
+          : yearStart + 86400000 * 270;
+
+        for (let i = 0; i < subjectCodes.length; i++) {
+          const subjectCode = subjectCodes[i];
+          const sk = `${clsRow.schoolCode}:${subjectCode}`;
+          const subjectId = subjectKeyToId.get(sk);
+          if (!subjectId) {
+            console.warn(
+              `Skip LMS course: subject ${subjectCode} (${clsRow.schoolCode})`,
+            );
+            courseSeq += 1;
+            continue;
+          }
+
+          const dup = await client.query(
+            `SELECT id FROM courses
+             WHERE school_id = $1 AND class_id = $2 AND subject_id = $3 AND deleted_at IS NULL`,
+            [schoolId, classId, subjectId],
+          );
+          if (dup.rows.length > 0) {
+            lmsSkipped += 1;
+            courseSeq += 1;
+            continue;
+          }
+
+          const teacherNid =
+            teacherNids[courseSeq % teacherNids.length] ?? teacherNids[0];
+          const teacherId = nationalIdToUserId.get(teacherNid);
+          if (!teacherId) {
+            console.warn(
+              `Skip LMS course: teacher not resolved ${teacherNid}`,
+            );
+            courseSeq += 1;
+            continue;
+          }
+
+          const classLabel = `${clsRow.schoolCode} ${clsRow.stageName} G${clsRow.gradeOrder} §${clsRow.sectionLetter}`;
+          const description = {
+            en: `Seed LMS — ${subjectCode} for ${classLabel}. Use for listing, publish, and teacher scoping tests.`,
+            ar: `بيانات تجريبية — ${subjectCode} — ${classLabel}`,
+          };
+          const objectives = {
+            en: `Term objectives (${subjectCode}): foundational skills, formative checks, and project milestone ${courseSeq + 1}.`,
+            ar: `أهداف الفصل (${subjectCode}) للاختبار.`,
+          };
+
+          const termBucket = courseSeq % 3;
+          const spanMs = Math.floor((yearEnd - yearStart) / 3);
+          const startMs = yearStart + termBucket * spanMs;
+          const endMs =
+            termBucket === 2 ? yearEnd : Math.min(yearEnd, startMs + spanMs - 1);
+
+          const sequentialLearningEnabled = courseSeq % 2 === 0;
+          const isPublished = courseSeq % 3 !== 1;
+          const durationLabel =
+            termBucket === 0
+              ? 'Term 1 (seed)'
+              : termBucket === 1
+                ? 'Term 2 (seed)'
+                : 'Term 3 (seed)';
+
+          await client.query(
+            `INSERT INTO courses (
+               school_id, class_id, subject_id,
+               description, objectives, duration_label,
+               start_date, end_date,
+               sequential_learning_enabled, is_published,
+               teacher_id,
+               created_at, updated_at
+             ) VALUES (
+               $1, $2, $3,
+               $4::jsonb, $5::jsonb, $6,
+               $7, $8,
+               $9, $10,
+               $11,
+               NOW(), NOW()
+             )`,
+            [
+              schoolId,
+              classId,
+              subjectId,
+              JSON.stringify(description),
+              JSON.stringify(objectives),
+              durationLabel,
+              new Date(startMs).toISOString(),
+              new Date(endMs).toISOString(),
+              sequentialLearningEnabled,
+              isPublished,
+              teacherId,
+            ],
+          );
+
+          lmsInserted += 1;
+          courseSeq += 1;
+        }
+      }
+
+      console.log(
+        `\nLMS courses: inserted ${lmsInserted}, skipped (already exists) ${lmsSkipped}.`,
+      );
+    }
   }
 
   // ─── Summary ─────────────────────────────────────────────────────────────
@@ -796,6 +960,9 @@ Create the schema first, then run this script again:
   );
   console.log(
     'Teacher assignments: POST /api/v1/teacher-assignments · GET /api/v1/teacher-assignments/classes/:classId',
+  );
+  console.log(
+    'LMS courses: GET|POST|PATCH|DELETE /api/v1/courses · GET /api/v1/courses/subjects/:subjectId · PATCH publish|unpublish',
   );
 
   await client.end();

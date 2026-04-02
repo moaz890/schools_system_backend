@@ -22,4 +22,3 @@ export class CreateEnrollmentDto {
   @Type(() => Date)
   enrollmentDate?: Date;
 }
-

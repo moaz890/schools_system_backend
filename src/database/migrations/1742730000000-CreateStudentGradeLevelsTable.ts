@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateStudentGradeLevelsTable1742730000000
-  implements MigrationInterface
-{
+export class CreateStudentGradeLevelsTable1742730000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS student_grade_levels (
@@ -35,9 +33,12 @@ export class CreateStudentGradeLevelsTable1742730000000
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS UQ_student_grade_levels_active_per_year`);
-    await queryRunner.query(`DROP INDEX IF EXISTS IDX_student_grade_levels_student_year`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS UQ_student_grade_levels_active_per_year`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS IDX_student_grade_levels_student_year`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS student_grade_levels`);
   }
 }
-

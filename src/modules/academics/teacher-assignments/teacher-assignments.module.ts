@@ -36,4 +36,3 @@ import { TeacherAssignmentsController } from './controllers/teacher-assignments.
   exports: [TeacherSpecializationsService, TeacherAssignmentsService],
 })
 export class TeacherAssignmentsModule {}
-

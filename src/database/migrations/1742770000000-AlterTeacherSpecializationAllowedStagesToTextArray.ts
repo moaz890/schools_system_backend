@@ -4,9 +4,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * TypeORM binds PostgreSQL uuid[] poorly for some drivers (values become the literal
  * `{"<uuid>"}` string). text[] stores the same UUID strings and serializes reliably.
  */
-export class AlterTeacherSpecializationAllowedStagesToTextArray1742770000000
-  implements MigrationInterface
-{
+export class AlterTeacherSpecializationAllowedStagesToTextArray1742770000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     const has = await queryRunner.hasColumn(
       'teacher_subject_specializations',

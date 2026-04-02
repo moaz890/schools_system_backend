@@ -43,8 +43,9 @@ export class CreateEnrollmentsTable1742740000000 implements MigrationInterface {
       `DROP INDEX IF EXISTS UQ_enrollments_active_per_student_year`,
     );
     await queryRunner.query(`DROP INDEX IF EXISTS IDX_enrollments_class_id`);
-    await queryRunner.query(`DROP INDEX IF EXISTS IDX_enrollments_student_year`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS IDX_enrollments_student_year`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS enrollments`);
   }
 }
-

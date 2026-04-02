@@ -48,7 +48,9 @@ export class TeacherAssignmentsController {
 
   @Get('classes/:classId')
   @Roles(UserRole.SCHOOL_ADMIN)
-  @ApiOperation({ summary: 'List teacher assignments for a class (all statuses)' })
+  @ApiOperation({
+    summary: 'List teacher assignments for a class (all statuses)',
+  })
   listForClass(
     @Param('classId', ParseUUIDPipe) classId: string,
     @CurrentUser() caller: AuthCaller,

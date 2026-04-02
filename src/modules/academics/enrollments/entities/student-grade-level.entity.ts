@@ -7,10 +7,14 @@ import { GradeLevel } from '../../grade-levels/entities/grade-level.entity';
 import { EnrollmentStatus } from '../enums/enrollment-status.enum';
 
 @Entity('student_grade_levels')
-@Index('UQ_student_grade_levels_active', ['schoolId', 'studentId', 'academicYearId'], {
-  unique: true,
-  where: `"status" = 'active' AND "deleted_at" IS NULL`,
-})
+@Index(
+  'UQ_student_grade_levels_active',
+  ['schoolId', 'studentId', 'academicYearId'],
+  {
+    unique: true,
+    where: `"status" = 'active' AND "deleted_at" IS NULL`,
+  },
+)
 export class StudentGradeLevel extends BaseEntity {
   @Column({ name: 'school_id', type: 'uuid' })
   schoolId: string;
@@ -43,4 +47,3 @@ export class StudentGradeLevel extends BaseEntity {
   @Column({ name: 'status', type: 'varchar', default: EnrollmentStatus.ACTIVE })
   status: EnrollmentStatus;
 }
-

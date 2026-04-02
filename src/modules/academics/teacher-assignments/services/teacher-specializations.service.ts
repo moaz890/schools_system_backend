@@ -26,22 +26,20 @@ export class TeacherSpecializationsService {
     private readonly stagesRepo: Repository<Stage>,
   ) {}
 
-  async upsert(
-    
-    dto: UpsertTeacherSpecializationDto,
-    caller: AuthCaller,
-  ) {
+  async upsert(dto: UpsertTeacherSpecializationDto, caller: AuthCaller) {
     const schoolId = this.resolveSchoolId(caller);
 
     const teacher = await this.usersRepo.findOne({
       where: { id: dto.teacherId, schoolId, role: UserRole.TEACHER },
     } as any);
-    if (!teacher) throw new NotFoundException('Teacher not found in your school');
+    if (!teacher)
+      throw new NotFoundException('Teacher not found in your school');
 
     const subject = await this.subjectsRepo.findOne({
       where: { id: dto.subjectId, schoolId },
     });
-    if (!subject) throw new NotFoundException('Subject not found in your school');
+    if (!subject)
+      throw new NotFoundException('Subject not found in your school');
 
     const allowedStageIds =
       dto.allowedStageIds == null || dto.allowedStageIds.length === 0
@@ -60,7 +58,11 @@ export class TeacherSpecializationsService {
     }
 
     const existing = await this.repo.findOne({
-      where: { schoolId, teacherId: dto.teacherId, subjectId: dto.subjectId } as any,
+      where: {
+        schoolId,
+        teacherId: dto.teacherId,
+        subjectId: dto.subjectId,
+      } as any,
     });
 
     if (existing && existing.deletedAt == null) {
@@ -85,8 +87,8 @@ export class TeacherSpecializationsService {
       });
 
     row.schoolId = schoolId;
-    row.teacherId = dto.teacherId || "";
-    row.subjectId = dto.subjectId || "";
+    row.teacherId = dto.teacherId || '';
+    row.subjectId = dto.subjectId || '';
     row.allowedStageIds = allowedStageIds;
     row.deletedAt = null;
 
@@ -110,7 +112,8 @@ export class TeacherSpecializationsService {
     const subject = await this.subjectsRepo.findOne({
       where: { id: subjectId, schoolId },
     });
-    if (!subject) throw new NotFoundException('Subject not found in your school');
+    if (!subject)
+      throw new NotFoundException('Subject not found in your school');
 
     if (stageId) {
       const stage = await this.stagesRepo.findOne({
@@ -155,7 +158,8 @@ export class TeacherSpecializationsService {
     const teacher = await this.usersRepo.findOne({
       where: { id: teacherId, schoolId, role: UserRole.TEACHER },
     } as any);
-    if (!teacher) throw new NotFoundException('Teacher not found in your school');
+    if (!teacher)
+      throw new NotFoundException('Teacher not found in your school');
 
     const rows = await this.repo
       .createQueryBuilder('sp')
@@ -185,4 +189,3 @@ export class TeacherSpecializationsService {
     return caller.schoolId;
   }
 }
-

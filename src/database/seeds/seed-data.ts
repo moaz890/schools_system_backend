@@ -565,7 +565,10 @@ export const SEED_SUBJECTS = [
     code: 'MATH',
     name: { en: 'Mathematics', ar: 'الرياضيات' },
     category: 'core',
-    description: { en: 'Algebra, geometry, statistics', ar: 'جبر وهندسة وإحصاء' },
+    description: {
+      en: 'Algebra, geometry, statistics',
+      ar: 'جبر وهندسة وإحصاء',
+    },
     creditHours: 5,
     maxPoints: null,
     countsTowardGpa: true,
@@ -965,6 +968,13 @@ export const SEED_TEACHER_SPECIALIZATIONS = [
 
 /**
  * Teaching assignments (class + subject + teacher). Class resolved like SEED_CLASSES / enrollments.
+ */
+/**
+ * LMS courses are generated in `run-seed.ts` (not listed here): for each {@link SEED_CLASSES}
+ * row, one course is inserted per subject in {@link SEED_GRADE_LEVEL_SUBJECT_LINKS} for that
+ * class’s grade (same `schoolCode`, `stageName`, `gradeOrder`). This yields many rows for API
+ * tests (`GET /courses/subjects/:subjectId`, publish, etc.) while respecting the unique
+ * `(school_id, class_id, subject_id)` constraint.
  */
 export const SEED_TEACHER_ASSIGNMENTS = [
   // GREENHS Grade 3 A — co-teach MATH

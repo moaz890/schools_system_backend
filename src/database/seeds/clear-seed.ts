@@ -4,9 +4,9 @@
  * Usage (from `schools-backend`):
  *   npm run seed:clear
  *
- * Order: delete seed academic year per school (cascades semesters, classes,
- * enrollments, student_grade_levels) → sessions → users → seed subjects
- * (cascades links/profiles) → grade_levels → stages → schools.
+ * Order: delete LMS courses for seed schools → seed academic year per school
+ * (cascades semesters, classes, enrollments, student_grade_levels) → sessions
+ * → users → seed subjects (cascades links/profiles) → grade_levels → stages → schools.
  */
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -60,6 +60,21 @@ async function main() {
   const schoolIds = schoolIdsRes.rows.map((r) => String(r.id));
 
   if (schoolIds.length > 0) {
+    try {
+      const delCourses = await client.query(
+        `DELETE FROM courses WHERE school_id = ANY($1::uuid[])`,
+        [schoolIds],
+      );
+      console.log(
+        `Deleted ${delCourses.rowCount ?? 0} LMS course row(s) for seed schools.`,
+      );
+    } catch (e: any) {
+      if (e.code !== '42P01') {
+        throw e;
+      }
+      console.warn('Table "courses" missing — skipping LMS courses delete.');
+    }
+
     try {
       const delYears = await client.query(
         `DELETE FROM academic_years

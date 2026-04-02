@@ -60,4 +60,3 @@ export class TeacherAssignment extends BaseEntity {
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 }
-

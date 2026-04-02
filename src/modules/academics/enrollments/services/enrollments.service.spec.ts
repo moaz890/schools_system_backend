@@ -16,7 +16,10 @@ describe('EnrollmentsService (Phase 2 core)', () => {
   const enrollmentRepo = {
     count: jest.fn(),
     create: jest.fn((x: any) => x),
-    save: jest.fn(async (x: any) => ({ ...x, id: x.id ?? 'enrollment-new-id' })),
+    save: jest.fn(async (x: any) => ({
+      ...x,
+      id: x.id ?? 'enrollment-new-id',
+    })),
     findOne: jest.fn(),
     find: jest.fn(),
   };
@@ -63,7 +66,10 @@ describe('EnrollmentsService (Phase 2 core)', () => {
   });
 
   it('creates a missing student_grade_levels placement and enrolls', async () => {
-    usersRepo.findOne.mockResolvedValue({ id: 'stu-1', role: UserRole.STUDENT });
+    usersRepo.findOne.mockResolvedValue({
+      id: 'stu-1',
+      role: UserRole.STUDENT,
+    });
 
     classRepo.findOne.mockResolvedValue({
       id: 'class-1',
@@ -83,7 +89,11 @@ describe('EnrollmentsService (Phase 2 core)', () => {
     });
 
     const res = await service.create(
-      { classId: 'class-1', studentId: 'stu-1', enrollmentDate: new Date('2025-09-01') },
+      {
+        classId: 'class-1',
+        studentId: 'stu-1',
+        enrollmentDate: new Date('2025-09-01'),
+      },
       caller,
     );
 
@@ -93,7 +103,10 @@ describe('EnrollmentsService (Phase 2 core)', () => {
   });
 
   it('rejects when existing placement grade_level_id does not match class grade', async () => {
-    usersRepo.findOne.mockResolvedValue({ id: 'stu-1', role: UserRole.STUDENT });
+    usersRepo.findOne.mockResolvedValue({
+      id: 'stu-1',
+      role: UserRole.STUDENT,
+    });
     classRepo.findOne.mockResolvedValue({
       id: 'class-1',
       schoolId: 'school-1',
@@ -116,7 +129,10 @@ describe('EnrollmentsService (Phase 2 core)', () => {
   });
 
   it('rejects when student already has active enrollment in same academic year', async () => {
-    usersRepo.findOne.mockResolvedValue({ id: 'stu-1', role: UserRole.STUDENT });
+    usersRepo.findOne.mockResolvedValue({
+      id: 'stu-1',
+      role: UserRole.STUDENT,
+    });
     classRepo.findOne.mockResolvedValue({
       id: 'class-1',
       schoolId: 'school-1',
@@ -144,7 +160,10 @@ describe('EnrollmentsService (Phase 2 core)', () => {
   });
 
   it('rejects when class is full', async () => {
-    usersRepo.findOne.mockResolvedValue({ id: 'stu-1', role: UserRole.STUDENT });
+    usersRepo.findOne.mockResolvedValue({
+      id: 'stu-1',
+      role: UserRole.STUDENT,
+    });
     classRepo.findOne.mockResolvedValue({
       id: 'class-1',
       schoolId: 'school-1',
@@ -183,4 +202,3 @@ describe('EnrollmentsService (Phase 2 core)', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
-

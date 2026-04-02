@@ -208,4 +208,3 @@ describe('ClassesService (Phase 1)', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
-

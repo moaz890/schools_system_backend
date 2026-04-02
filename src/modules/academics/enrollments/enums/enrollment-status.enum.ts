@@ -4,4 +4,3 @@ export enum EnrollmentStatus {
   GRADUATED = 'graduated',
   WITHDRAWN = 'withdrawn',
 }
-

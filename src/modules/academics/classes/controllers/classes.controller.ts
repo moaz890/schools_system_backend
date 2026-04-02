@@ -63,8 +63,10 @@ export class ClassesController {
   @Delete(':id')
   @Roles(UserRole.SCHOOL_ADMIN)
   @ApiOperation({ summary: 'Soft delete class/section' })
-  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() caller: AuthCaller) {
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() caller: AuthCaller,
+  ) {
     return this.service.remove(id, caller);
   }
 }
-

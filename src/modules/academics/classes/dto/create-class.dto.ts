@@ -24,4 +24,3 @@ export class CreateClassDto {
   @IsUUID('4')
   homeroomTeacherId: string;
 }
-

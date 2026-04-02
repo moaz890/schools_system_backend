@@ -47,9 +47,7 @@ export class ClassesHelpersService {
     };
   }
 
-  private toPublicGradeLevel(
-    c: ClassSection,
-  ): PublicGradeLevelSnippet | null {
+  private toPublicGradeLevel(c: ClassSection): PublicGradeLevelSnippet | null {
     if (!c.gradeLevel) return null;
     const g = c.gradeLevel;
     return {

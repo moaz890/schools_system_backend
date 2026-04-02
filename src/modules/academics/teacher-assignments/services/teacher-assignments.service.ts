@@ -115,11 +115,7 @@ export class TeacherAssignmentsService {
     return this.helpers.toPublicAssignment(full);
   }
 
-  async end(
-    id: string,
-    dto: EndTeacherAssignmentDto,
-    caller: AuthCaller,
-  ) {
+  async end(id: string, dto: EndTeacherAssignmentDto, caller: AuthCaller) {
     const schoolId = this.resolveSchoolId(caller);
     const row = await this.dal.findAssignmentById(schoolId, id);
     if (!row) throw new NotFoundException('Assignment not found');

@@ -48,4 +48,3 @@ export class ClassSection extends BaseEntity {
   @JoinColumn({ name: 'homeroom_teacher_id' })
   homeroomTeacher: User;
 }
-

@@ -30,4 +30,3 @@ export class UpsertTeacherSpecializationDto {
   @IsUUID('4', { each: true })
   allowedStageIds?: string[] | null;
 }
-

@@ -77,7 +77,10 @@ describe('TeacherAssignmentsService', () => {
       allowedStageIds: null,
     });
     dal.countActiveDuplicate.mockResolvedValue(0);
-    dal.saveAssignment.mockImplementation(async (x: any) => ({ ...x, id: 'asg-1' }));
+    dal.saveAssignment.mockImplementation(async (x: any) => ({
+      ...x,
+      id: 'asg-1',
+    }));
     dal.findAssignmentById.mockResolvedValue({
       id: 'asg-1',
       classId: 'c1',
@@ -204,7 +207,10 @@ describe('TeacherAssignmentsService', () => {
         name: { en: 'Math', ar: 'رياضيات' },
       },
     });
-    dal.saveAssignment.mockImplementation(async (x: any) => ({ ...x, id: 'asg-2' }));
+    dal.saveAssignment.mockImplementation(async (x: any) => ({
+      ...x,
+      id: 'asg-2',
+    }));
 
     const out = await service.create(
       { classId: 'c1', teacherId: 't2', subjectId: 's1' },

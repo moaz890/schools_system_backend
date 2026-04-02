@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateTeacherAssignmentsTable1742760000000
-  implements MigrationInterface
-{
+export class CreateTeacherAssignmentsTable1742760000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS teacher_assignments (
@@ -62,4 +60,3 @@ export class CreateTeacherAssignmentsTable1742760000000
     await queryRunner.query(`DROP TABLE IF EXISTS teacher_assignments`);
   }
 }
-

@@ -77,7 +77,11 @@ export class SubjectsService {
 
     const creditHours = dto.creditHours ?? null;
     const maxPoints = dto.maxPoints ?? null;
-    await this.assertSubjectWeightsMatchStrategy(schoolId, creditHours, maxPoints);
+    await this.assertSubjectWeightsMatchStrategy(
+      schoolId,
+      creditHours,
+      maxPoints,
+    );
 
     const subject = this.repo.create({
       schoolId,

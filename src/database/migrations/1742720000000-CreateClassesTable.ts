@@ -50,10 +50,13 @@ export class CreateClassesTable1742720000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS UQ_classes_grade_year_letter`);
-    await queryRunner.query(`DROP INDEX IF EXISTS IDX_classes_grade_level_year`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS UQ_classes_grade_year_letter`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS IDX_classes_grade_level_year`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS IDX_classes_school_id`);
     await queryRunner.query(`DROP TABLE IF EXISTS classes`);
   }
 }
-

@@ -10,10 +10,11 @@ import { AcademicYear } from '../../core/academic-years/entities/academic-year.e
 import { User } from '../../core/users/entities/user.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ClassSection, GradeLevel, AcademicYear, User])],
+  imports: [
+    TypeOrmModule.forFeature([ClassSection, GradeLevel, AcademicYear, User]),
+  ],
   controllers: [ClassesController],
   providers: [ClassesDalService, ClassesHelpersService, ClassesService],
   exports: [ClassesService],
 })
 export class ClassesModule {}
-

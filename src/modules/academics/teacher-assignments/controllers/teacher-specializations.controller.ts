@@ -25,7 +25,8 @@ export class TeacherSpecializationsController {
   @Put(':teacherId/:subjectId')
   @Roles(UserRole.SCHOOL_ADMIN)
   @ApiOperation({
-    summary: 'Upsert a teacher specialization for a subject (optionally stage-limited)',
+    summary:
+      'Upsert a teacher specialization for a subject (optionally stage-limited)',
   })
   upsert(
     @Param('teacherId', ParseUUIDPipe) teacherId: string,
@@ -45,7 +46,8 @@ export class TeacherSpecializationsController {
   @Get('teachers/:teacherId/subjects')
   @Roles(UserRole.SCHOOL_ADMIN)
   @ApiOperation({
-    summary: 'List subjects a teacher is specialized in (includes allowedStageIds)',
+    summary:
+      'List subjects a teacher is specialized in (includes allowedStageIds)',
   })
   listTeacherSubjects(
     @Param('teacherId', ParseUUIDPipe) teacherId: string,
@@ -57,14 +59,18 @@ export class TeacherSpecializationsController {
   @Get(':subjectId/teachers')
   @Roles(UserRole.SCHOOL_ADMIN)
   @ApiOperation({
-    summary: 'List teachers eligible to teach a subject (optionally filter by stageId)',
+    summary:
+      'List teachers eligible to teach a subject (optionally filter by stageId)',
   })
   listEligibleTeachers(
     @Param('subjectId', ParseUUIDPipe) subjectId: string,
     @Query('stageId') stageId: string | undefined,
     @CurrentUser() caller: AuthCaller,
   ) {
-    return this.service.listEligibleTeachersForSubject(subjectId, stageId, caller);
+    return this.service.listEligibleTeachersForSubject(
+      subjectId,
+      stageId,
+      caller,
+    );
   }
 }
-

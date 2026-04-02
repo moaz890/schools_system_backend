@@ -25,10 +25,7 @@ export class EnrollmentsController {
   @Post()
   @Roles(UserRole.SCHOOL_ADMIN)
   @ApiOperation({ summary: 'Enroll a student into a class (Phase 2 core)' })
-  create(
-    @Body() dto: CreateEnrollmentDto,
-    @CurrentUser() caller: AuthCaller,
-  ) {
+  create(@Body() dto: CreateEnrollmentDto, @CurrentUser() caller: AuthCaller) {
     return this.service.create(dto, caller);
   }
 
@@ -63,4 +60,3 @@ export class EnrollmentsController {
     return this.service.update(id, dto, caller);
   }
 }
-

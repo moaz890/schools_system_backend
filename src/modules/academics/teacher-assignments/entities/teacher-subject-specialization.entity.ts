@@ -36,7 +36,11 @@ export class TeacherSubjectSpecialization extends BaseEntity {
   subject: Subject;
 
   /** UUID strings; stored as PostgreSQL `text[]` so TypeORM/pg bind arrays reliably. */
-  @Column({ name: 'allowed_stage_ids', type: 'text', array: true, nullable: true })
+  @Column({
+    name: 'allowed_stage_ids',
+    type: 'text',
+    array: true,
+    nullable: true,
+  })
   allowedStageIds: string[] | null;
 }
-

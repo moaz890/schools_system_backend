@@ -78,7 +78,7 @@ describe('SubjectsService', () => {
   it('create normalizes code to uppercase and saves when unique', async () => {
     mockQb.getOne.mockResolvedValue(null);
     repo.save.mockImplementation(async (s: Subject) => ({
-    //   id: 'new-id',
+      //   id: 'new-id',
       ...s,
     }));
 

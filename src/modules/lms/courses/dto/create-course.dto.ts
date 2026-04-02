@@ -1,0 +1,78 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import {
+  IsBoolean,
+  IsDate,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  ValidateNested,
+  IsUUID,
+} from 'class-validator';
+import { LocalizedStringDto } from '../../../../common/i18n/localized-string.dto';
+
+export class CreateCourseDto {
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
+  @IsNotEmpty()
+  @IsUUID('4')
+  classId: string;
+
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440001' })
+  @IsNotEmpty()
+  @IsUUID('4')
+  subjectId: string;
+
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440010' })
+  @IsNotEmpty()
+  @IsUUID('4')
+  teacherId: string;
+
+  @ApiPropertyOptional({ type: LocalizedStringDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LocalizedStringDto)
+  description?: LocalizedStringDto;
+
+  @ApiPropertyOptional({ type: LocalizedStringDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LocalizedStringDto)
+  objectives?: LocalizedStringDto;
+
+  @ApiPropertyOptional({
+    example: 'Course Term 1',
+    description: 'Optional label for display (e.g. “Semester 1”, “Term A”).',
+    maxLength: 120,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  durationLabel?: string;
+
+  @ApiProperty({
+    example: '2025-09-01T00:00:00.000Z',
+    description: 'Manual start date for the course access window.',
+  })
+  @IsDate()
+  @Type(() => Date)
+  startDate: Date;
+
+  @ApiProperty({
+    example: '2026-01-15T00:00:00.000Z',
+    description: 'Manual end date for the course access window.',
+  })
+  @IsDate()
+  @Type(() => Date)
+  endDate: Date;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  sequentialLearningEnabled?: boolean;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  isPublished?: boolean;
+}

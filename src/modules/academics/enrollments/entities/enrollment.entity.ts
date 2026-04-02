@@ -45,4 +45,3 @@ export class Enrollment extends BaseEntity {
   @Column({ name: 'status', type: 'varchar', default: EnrollmentStatus.ACTIVE })
   status: EnrollmentStatus;
 }
-

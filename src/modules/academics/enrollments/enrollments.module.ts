@@ -20,4 +20,3 @@ import { User } from '../../core/users/entities/user.entity';
   providers: [EnrollmentsService],
 })
 export class EnrollmentsModule {}
-

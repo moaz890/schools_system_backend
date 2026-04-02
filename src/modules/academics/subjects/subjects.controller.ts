@@ -63,7 +63,8 @@ export class SubjectsController {
   @Put(':id/assessment-profile')
   @Roles(UserRole.SCHOOL_ADMIN)
   @ApiOperation({
-    summary: 'Create or replace default assessment profile (weights must sum to 100)',
+    summary:
+      'Create or replace default assessment profile (weights must sum to 100)',
   })
   upsertAssessmentProfile(
     @Param('id', ParseUUIDPipe) id: string,

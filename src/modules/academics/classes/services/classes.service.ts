@@ -21,7 +21,10 @@ export class ClassesService {
   async list(caller: AuthCaller, query: QueryClassesDto) {
     const schoolId = this.helpers.resolveCallerSchoolId(caller);
 
-    const { data, total } = await this.dal.listClassesPaginated(schoolId, query);
+    const { data, total } = await this.dal.listClassesPaginated(
+      schoolId,
+      query,
+    );
 
     return {
       data: data.map((c) => this.helpers.toPublicClassResponse(c)),
@@ -66,11 +69,12 @@ export class ClassesService {
       throw new BadRequestException('Homeroom teacher must be role=teacher');
     }
 
-    const homeroomTaken = await this.dal.countHomeroomAssignmentsForTeacherInYear(
-      schoolId,
-      dto.academicYearId,
-      dto.homeroomTeacherId,
-    );
+    const homeroomTaken =
+      await this.dal.countHomeroomAssignmentsForTeacherInYear(
+        schoolId,
+        dto.academicYearId,
+        dto.homeroomTeacherId,
+      );
     if (homeroomTaken > 0) {
       throw new ConflictException(
         'This teacher is already assigned as homeroom for another class in the academic year',
@@ -83,9 +87,8 @@ export class ClassesService {
       dto.academicYearId,
     );
 
-    const sectionLetter = this.helpers.sectionLetterForExistingClassCount(
-      gradeClassesCount,
-    );
+    const sectionLetter =
+      this.helpers.sectionLetterForExistingClassCount(gradeClassesCount);
     const name = this.helpers.localizedSectionName(
       gradeLevel.name.en,
       gradeLevel.name.ar,

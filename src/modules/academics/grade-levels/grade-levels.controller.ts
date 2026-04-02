@@ -82,7 +82,8 @@ export class GradeLevelsController {
   @Get(':gradeLevelId/subjects')
   @Roles(UserRole.SCHOOL_ADMIN)
   @ApiOperation({
-    summary: 'List subjects linked to this grade level (404 if grade not in school)',
+    summary:
+      'List subjects linked to this grade level (404 if grade not in school)',
   })
   listSubjectsForGrade(
     @Param('gradeLevelId', ParseUUIDPipe) gradeLevelId: string,

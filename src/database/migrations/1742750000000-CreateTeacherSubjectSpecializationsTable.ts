@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateTeacherSubjectSpecializationsTable1742750000000
-  implements MigrationInterface
-{
+export class CreateTeacherSubjectSpecializationsTable1742750000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS teacher_subject_specializations (
@@ -48,7 +46,8 @@ export class CreateTeacherSubjectSpecializationsTable1742750000000
     await queryRunner.query(
       `DROP INDEX IF EXISTS IDX_teacher_subject_specializations_school_subject`,
     );
-    await queryRunner.query(`DROP TABLE IF EXISTS teacher_subject_specializations`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS teacher_subject_specializations`,
+    );
   }
 }
-

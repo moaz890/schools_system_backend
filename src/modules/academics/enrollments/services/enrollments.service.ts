@@ -37,7 +37,7 @@ export class EnrollmentsService {
       id: student.id,
       // LocalizedString { en, ar }
       name: student.name,
-      email: student.email
+      email: student.email,
     };
   }
 
@@ -60,7 +60,9 @@ export class EnrollmentsService {
       id: enrollment.id,
       status: enrollment.status,
       enrollmentDate: enrollment.enrollmentDate,
-      class: enrollment.class ? this.toSafeClassPayload(enrollment.class) : undefined,
+      class: enrollment.class
+        ? this.toSafeClassPayload(enrollment.class)
+        : undefined,
     };
   }
 
@@ -171,7 +173,9 @@ export class EnrollmentsService {
   async listActiveStudentsForClass(classId: string, caller: AuthCaller) {
     const schoolId = this.resolveSchoolId(caller);
 
-    const cls = await this.classRepo.findOne({ where: { id: classId, schoolId } });
+    const cls = await this.classRepo.findOne({
+      where: { id: classId, schoolId },
+    });
     if (!cls) throw new NotFoundException('Class not found');
 
     const enrollments = await this.enrollmentRepo.find({
@@ -213,7 +217,11 @@ export class EnrollmentsService {
     return enrollments.map((e) => this.toSafeEnrollmentHistoryPayload(e));
   }
 
-  async update(enrollmentId: string, dto: UpdateEnrollmentDto, caller: AuthCaller) {
+  async update(
+    enrollmentId: string,
+    dto: UpdateEnrollmentDto,
+    caller: AuthCaller,
+  ) {
     const schoolId = this.resolveSchoolId(caller);
 
     const enrollment = await this.enrollmentRepo.findOne({
@@ -259,7 +267,10 @@ export class EnrollmentsService {
           'Student grade placement is missing for this academic year',
         );
       }
-      if (enrollment.class && activePlacement.gradeLevelId !== enrollment.class.gradeLevelId) {
+      if (
+        enrollment.class &&
+        activePlacement.gradeLevelId !== enrollment.class.gradeLevelId
+      ) {
         throw new BadRequestException(
           'Student grade placement does not match the class grade level for this academic year',
         );
@@ -311,4 +322,3 @@ export class EnrollmentsService {
     return caller.schoolId;
   }
 }
-

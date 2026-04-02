@@ -20,4 +20,3 @@ export class QueryClassesDto extends PaginationDto {
   @IsUUID('4')
   academicYearId?: string;
 }
-

@@ -3,7 +3,10 @@ import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsUUID, Min } from 'class-validator';
 
 export class UpdateClassDto {
-  @ApiPropertyOptional({ example: 35, description: 'Updated capacity (must be > 0)' })
+  @ApiPropertyOptional({
+    example: 35,
+    description: 'Updated capacity (must be > 0)',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -18,4 +21,3 @@ export class UpdateClassDto {
   @IsUUID('4')
   homeroomTeacherId?: string;
 }
-
