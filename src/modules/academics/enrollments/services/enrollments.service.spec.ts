@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { EnrollmentsService } from './enrollments.service';
 import { Enrollment } from '../entities/enrollment.entity';
@@ -15,10 +16,12 @@ describe('EnrollmentsService (Phase 2 core)', () => {
   const enrollmentRepo = {
     count: jest.fn(),
     create: jest.fn((x: any) => x),
-    save: jest.fn(async (x: any) => x),
+    save: jest.fn(async (x: any) => ({ ...x, id: x.id ?? 'enrollment-new-id' })),
     findOne: jest.fn(),
     find: jest.fn(),
   };
+
+  const eventEmitter = { emit: jest.fn() };
 
   const studentGradeLevelRepo = {
     findOne: jest.fn(),
@@ -52,6 +55,7 @@ describe('EnrollmentsService (Phase 2 core)', () => {
         },
         { provide: getRepositoryToken(ClassSection), useValue: classRepo },
         { provide: getRepositoryToken(User), useValue: usersRepo },
+        { provide: EventEmitter2, useValue: eventEmitter },
       ],
     }).compile();
 
@@ -85,6 +89,7 @@ describe('EnrollmentsService (Phase 2 core)', () => {
 
     expect(studentGradeLevelRepo.save).toHaveBeenCalled();
     expect(res.status).toBe(EnrollmentStatus.ACTIVE);
+    expect(eventEmitter.emit).toHaveBeenCalled();
   });
 
   it('rejects when existing placement grade_level_id does not match class grade', async () => {

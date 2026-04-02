@@ -2,6 +2,8 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../../common/entities/base.entity';
 import { GradeLevel } from './grade-level.entity';
 import { Subject } from '../../subjects/entities/subject.entity';
+import { AcademicYear } from 'src/modules/core/academic-years/entities/academic-year.entity';
+import { Semester } from 'src/modules/core/academic-years/entities/semester.entity';
 
 @Entity('grade_level_subjects')
 @Index('UQ_grade_level_subjects_pair', ['gradeLevelId', 'subjectId'], {
@@ -22,4 +24,22 @@ export class GradeLevelSubject extends BaseEntity {
     @ManyToOne(() => Subject, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'subject_id' })
     subject: Subject;
+
+    /**
+     * We will use them later 
+     */
+    // @Column({ name: 'academic_year_id', type: 'uuid' })
+    // academicYearId: string;
+
+    // @ManyToOne(() => AcademicYear, { onDelete: 'CASCADE' })
+    // @JoinColumn({ name: 'academic_year_id' })
+    // academicYear: AcademicYear;
+
+    // @Column({ name: "semester_id", type: 'uuid' })
+    // semesterId: string;
+
+    // @ManyToOne(() => Semester, { onDelete: 'CASCADE' })
+    // @JoinColumn({ name: 'semester_id' })
+    // semester: Semester;
+
 }

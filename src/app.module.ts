@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 import appConfig from './config/app.config';
@@ -39,6 +40,8 @@ import { SchoolStrategiesModule } from './modules/core/school-strategies/school-
         limit: 120,
       },
     ]),
+
+    EventEmitterModule.forRoot(),
 
     // Feature modules
     LoggerModule,

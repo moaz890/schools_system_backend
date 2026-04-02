@@ -15,6 +15,7 @@ import type { EndTeacherAssignmentDto } from '../dto/end-teacher-assignment.dto'
 import { TeacherAssignmentsDalService } from './teacher-assignments-dal.service';
 import { TeacherAssignmentsHelpersService } from './teacher-assignments-helpers.service';
 
+/** Assignments are scoped by classId + subjectId (+ academic year). Curriculum must match class grade. */
 @Injectable()
 export class TeacherAssignmentsService {
   constructor(

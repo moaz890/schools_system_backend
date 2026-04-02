@@ -4,12 +4,16 @@ import {
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { GradeLevelSubject } from './entities/grade-level-subject.entity';
-import { GradeLevel } from './entities/grade-level.entity';
-import { Subject } from '../subjects/entities/subject.entity';
-import type { AuthCaller } from '../../core/users/types/auth-caller.type';
+import { GradeLevelSubject } from '../entities/grade-level-subject.entity';
+import { GradeLevel } from '../entities/grade-level.entity';
+import { Subject } from '../../subjects/entities/subject.entity';
+import type { AuthCaller } from '../../../core/users/types/auth-caller.type';
+import { TeacherAssignment } from '../../teacher-assignments/entities/teacher-assignment.entity';
+import { GRADE_LEVEL_SUBJECT_REMOVED_EVENT } from '../../events/academics-events.constants';
+import { GradeLevelSubjectRemovedEvent } from '../../events/grade-level-subject-removed.event';
 
 @Injectable()
 export class GradeLevelSubjectsService {
@@ -20,6 +24,9 @@ export class GradeLevelSubjectsService {
         private readonly gradeLevelRepo: Repository<GradeLevel>,
         @InjectRepository(Subject)
         private readonly subjectRepo: Repository<Subject>,
+        @InjectRepository(TeacherAssignment)
+        private readonly teacherAssignmentRepo: Repository<TeacherAssignment>,
+        private readonly eventEmitter: EventEmitter2,
     ) {}
 
     async listSubjectsForGrade(gradeLevelId: string, caller: AuthCaller) {
@@ -76,7 +83,33 @@ export class GradeLevelSubjectsService {
             throw new NotFoundException('This subject is not linked to this grade level');
         }
 
+        const assignmentCount = await this.teacherAssignmentRepo
+            .createQueryBuilder('ta')
+            .innerJoin('ta.class', 'c')
+            .where('c.gradeLevelId = :gradeLevelId', { gradeLevelId })
+            .andWhere('c.schoolId = :schoolId', { schoolId })
+            .andWhere('ta.subjectId = :subjectId', { subjectId })
+            .andWhere('ta.deletedAt IS NULL')
+            .getCount();
+
+        if (assignmentCount > 0) {
+            throw new ConflictException(
+                'Cannot remove this subject from the grade: teacher assignments still exist for classes in this grade. End or remove those assignments first.',
+            );
+        }
+
+        const linkId = link.id;
         await this.linkRepo.softRemove(link);
+
+        this.eventEmitter.emit(
+            GRADE_LEVEL_SUBJECT_REMOVED_EVENT,
+            new GradeLevelSubjectRemovedEvent(
+                schoolId,
+                gradeLevelId,
+                subjectId,
+                linkId,
+            ),
+        );
     }
 
     private resolveSchoolId(caller: AuthCaller): string {

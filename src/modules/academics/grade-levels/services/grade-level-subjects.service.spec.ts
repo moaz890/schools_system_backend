@@ -5,12 +5,15 @@ import {
     ConflictException,
     NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GradeLevelSubjectsService } from './grade-level-subjects.service';
-import { GradeLevelSubject } from './entities/grade-level-subject.entity';
-import { GradeLevel } from './entities/grade-level.entity';
-import { Subject } from '../subjects/entities/subject.entity';
-import type { AuthCaller } from '../../core/users/types/auth-caller.type';
-import { UserRole } from '../../../common/enums/user-role.enum';
+import { GradeLevelSubject } from '../entities/grade-level-subject.entity';
+import { GradeLevel } from '../entities/grade-level.entity';
+import { Subject } from '../../subjects/entities/subject.entity';
+import { TeacherAssignment } from '../../teacher-assignments/entities/teacher-assignment.entity';
+import type { AuthCaller } from '../../../core/users/types/auth-caller.type';
+import { UserRole } from '../../../../common/enums/user-role.enum';
+import { GRADE_LEVEL_SUBJECT_REMOVED_EVENT } from '../../events/academics-events.constants';
 
 describe('GradeLevelSubjectsService', () => {
     let service: GradeLevelSubjectsService;
@@ -40,6 +43,19 @@ describe('GradeLevelSubjectsService', () => {
         findOne: jest.fn(),
     };
 
+    const taQb = {
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getCount: jest.fn(),
+    };
+
+    const teacherAssignmentRepo = {
+        createQueryBuilder: jest.fn(() => taQb),
+    };
+
+    const eventEmitter = { emit: jest.fn() };
+
     const caller: AuthCaller = {
         id: 'user-1',
         role: UserRole.SCHOOL_ADMIN,
@@ -54,6 +70,11 @@ describe('GradeLevelSubjectsService', () => {
                 { provide: getRepositoryToken(GradeLevelSubject), useValue: linkRepo },
                 { provide: getRepositoryToken(GradeLevel), useValue: gradeLevelRepo },
                 { provide: getRepositoryToken(Subject), useValue: subjectRepo },
+                {
+                    provide: getRepositoryToken(TeacherAssignment),
+                    useValue: teacherAssignmentRepo,
+                },
+                { provide: EventEmitter2, useValue: eventEmitter },
             ],
         }).compile();
 
@@ -100,5 +121,44 @@ describe('GradeLevelSubjectsService', () => {
         await expect(
             service.listSubjectsForGrade('g-missing', caller),
         ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('unlinkSubject throws ConflictException when teacher assignments exist', async () => {
+        gradeLevelRepo.findOne.mockResolvedValue({ id: 'g1', schoolId: 'school-1' });
+        linkRepo.findOne.mockResolvedValue({
+            id: 'link-1',
+            gradeLevelId: 'g1',
+            subjectId: 's1',
+        });
+        taQb.getCount.mockResolvedValue(1);
+
+        await expect(service.unlinkSubject('g1', 's1', caller)).rejects.toBeInstanceOf(
+            ConflictException,
+        );
+        expect(linkRepo.softRemove).not.toHaveBeenCalled();
+        expect(eventEmitter.emit).not.toHaveBeenCalled();
+    });
+
+    it('unlinkSubject soft-removes and emits when no assignments', async () => {
+        gradeLevelRepo.findOne.mockResolvedValue({ id: 'g1', schoolId: 'school-1' });
+        linkRepo.findOne.mockResolvedValue({
+            id: 'link-1',
+            gradeLevelId: 'g1',
+            subjectId: 's1',
+        });
+        taQb.getCount.mockResolvedValue(0);
+
+        await service.unlinkSubject('g1', 's1', caller);
+
+        expect(linkRepo.softRemove).toHaveBeenCalled();
+        expect(eventEmitter.emit).toHaveBeenCalledWith(
+            GRADE_LEVEL_SUBJECT_REMOVED_EVENT,
+            expect.objectContaining({
+                schoolId: 'school-1',
+                gradeLevelId: 'g1',
+                subjectId: 's1',
+                gradeLevelSubjectLinkId: 'link-1',
+            }),
+        );
     });
 });

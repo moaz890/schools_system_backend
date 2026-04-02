@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
 import { Enrollment } from '../entities/enrollment.entity';
@@ -14,6 +15,8 @@ import { EnrollmentStatus } from '../enums/enrollment-status.enum';
 import { UserRole } from '../../../../common/enums/user-role.enum';
 import type { CreateEnrollmentDto } from '../dto/create-enrollment.dto';
 import type { UpdateEnrollmentDto } from '../dto/update-enrollment.dto';
+import { STUDENT_ENROLLED_EVENT } from '../../events/academics-events.constants';
+import { StudentEnrolledEvent } from '../../events/student-enrolled.event';
 
 @Injectable()
 export class EnrollmentsService {
@@ -26,6 +29,7 @@ export class EnrollmentsService {
     private readonly classRepo: Repository<ClassSection>,
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   private toSafeStudentPayload(student: User) {
@@ -147,7 +151,21 @@ export class EnrollmentsService {
       status: EnrollmentStatus.ACTIVE,
     });
 
-    return this.enrollmentRepo.save(enrollment);
+    const saved = await this.enrollmentRepo.save(enrollment);
+
+    this.eventEmitter.emit(
+      STUDENT_ENROLLED_EVENT,
+      new StudentEnrolledEvent(
+        schoolId,
+        saved.id,
+        dto.studentId,
+        dto.classId,
+        academicYearId,
+        classGradeLevelId,
+      ),
+    );
+
+    return saved;
   }
 
   async listActiveStudentsForClass(classId: string, caller: AuthCaller) {
@@ -266,6 +284,20 @@ export class EnrollmentsService {
 
     enrollment.status = dto.status;
     await this.enrollmentRepo.save(enrollment);
+
+    if (dto.status === EnrollmentStatus.ACTIVE && enrollment.class) {
+      this.eventEmitter.emit(
+        STUDENT_ENROLLED_EVENT,
+        new StudentEnrolledEvent(
+          schoolId,
+          enrollment.id,
+          enrollment.studentId,
+          enrollment.classId,
+          enrollment.academicYearId,
+          enrollment.class.gradeLevelId,
+        ),
+      );
+    }
 
     // Return safe payload (same shape as history endpoint).
     // Note: we re-map from `enrollment` entity; it has class loaded from earlier.

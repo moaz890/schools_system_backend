@@ -4,7 +4,7 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { UserRole } from '../../../common/enums/user-role.enum';
 import type { AuthCaller } from '../../core/users/types/auth-caller.type';
-import { GradeLevelsService } from '../grade-levels/grade-levels.service';
+import { GradeLevelsService } from '../grade-levels/services/grade-levels.service';
 
 @ApiTags('Stages')
 @ApiBearerAuth('access-token')
