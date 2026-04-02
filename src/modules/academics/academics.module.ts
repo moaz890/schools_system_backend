@@ -17,7 +17,7 @@ import { AcademicsEventsModule } from './events/academics-events.module';
     EnrollmentsModule,
     TeacherAssignmentsModule,
     AcademicsEventsModule,
-    // CoursesModule,
+    
   ],
   controllers: [StageGradeLevelsController],
 })

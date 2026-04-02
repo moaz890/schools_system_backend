@@ -895,9 +895,19 @@ export const SEED_GRADE_LEVEL_SUBJECT_LINKS = [
 
 /**
  * Teacher can teach subject in school. `restrictToStageNameEn` matches `stages.name->>'en'` (e.g. Primary);
- * omit/null → allowed in all stages (`allowed_stage_ids` NULL).
+ * `restrictToStageNamesEn` (optional) lists multiple stages → stored as `allowed_stage_ids`;
+ * omit both / empty → allowed in all stages (`allowed_stage_ids` NULL).
+ * GREENHS rows use null where the same teacher must cover Kindergarten, Primary, and Secondary in seed curriculum.
  */
-export const SEED_TEACHER_SPECIALIZATIONS = [
+export type SeedTeacherSpecialization = {
+  schoolCode: string;
+  teacherNationalId: string;
+  subjectCode: string;
+  restrictToStageNameEn?: string | null;
+  restrictToStageNamesEn?: readonly string[];
+};
+
+export const SEED_TEACHER_SPECIALIZATIONS: readonly SeedTeacherSpecialization[] = [
   {
     schoolCode: 'GREENHS',
     teacherNationalId: 'SEED-NID-TEACHER-GREENHS-001',
@@ -908,31 +918,43 @@ export const SEED_TEACHER_SPECIALIZATIONS = [
     schoolCode: 'GREENHS',
     teacherNationalId: 'SEED-NID-TEACHER-GREENHS-001',
     subjectCode: 'ARA',
-    restrictToStageNameEn: 'Primary',
+    restrictToStageNameEn: null,
   },
   {
     schoolCode: 'GREENHS',
     teacherNationalId: 'SEED-NID-TEACHER-GREENHS-002',
     subjectCode: 'ARA',
-    restrictToStageNameEn: 'Primary',
+    restrictToStageNameEn: null,
   },
   {
     schoolCode: 'GREENHS',
     teacherNationalId: 'SEED-NID-TEACHER-GREENHS-002',
     subjectCode: 'ENG',
-    restrictToStageNameEn: 'Primary',
+    restrictToStageNameEn: null,
   },
   {
     schoolCode: 'GREENHS',
     teacherNationalId: 'SEED-NID-TEACHER-GREENHS-003',
     subjectCode: 'SCI',
-    restrictToStageNameEn: 'Primary',
+    restrictToStageNameEn: null,
   },
   {
     schoolCode: 'GREENHS',
     teacherNationalId: 'SEED-NID-TEACHER-GREENHS-003',
     subjectCode: 'MATH',
     restrictToStageNameEn: 'Primary',
+  },
+  {
+    schoolCode: 'GREENHS',
+    teacherNationalId: 'SEED-NID-TEACHER-GREENHS-004',
+    subjectCode: 'REL',
+    restrictToStageNameEn: null,
+  },
+  {
+    schoolCode: 'GREENHS',
+    teacherNationalId: 'SEED-NID-TEACHER-GREENHS-004',
+    subjectCode: 'PE',
+    restrictToStageNameEn: null,
   },
   {
     schoolCode: 'BLUEVA',
@@ -964,7 +986,7 @@ export const SEED_TEACHER_SPECIALIZATIONS = [
     subjectCode: 'SCI',
     restrictToStageNameEn: 'Primary',
   },
-] as const;
+];
 
 /**
  * Teaching assignments (class + subject + teacher). Class resolved like SEED_CLASSES / enrollments.

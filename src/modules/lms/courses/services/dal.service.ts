@@ -31,6 +31,7 @@ export class CoursesDalService {
         'teacher',
         'classSection',
         'classSection.academicYear',
+        'classSection.gradeLevel',
         'subject',
       ],
     });
@@ -39,7 +40,7 @@ export class CoursesDalService {
   async findClass(classId: string, schoolId: string) {
     const cls = await this.classesRepo.findOne({
       where: { id: classId, schoolId },
-      relations: ['academicYear'],
+      relations: ['academicYear', 'gradeLevel'],
     });
 
     if (!cls) throw new NotFoundException('Class not found');
@@ -122,6 +123,7 @@ export class CoursesDalService {
         'teacher',
         'classSection',
         'classSection.academicYear',
+        'classSection.gradeLevel',
         'subject',
       ],
       order: { createdAt: 'DESC' },

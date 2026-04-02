@@ -51,6 +51,8 @@ export class CreateCourseDto {
   durationLabel?: string;
 
   @ApiProperty({
+    type: String,
+    format: 'date-time',
     example: '2025-09-01T00:00:00.000Z',
     description: 'Manual start date for the course access window.',
   })
@@ -59,7 +61,9 @@ export class CreateCourseDto {
   startDate: Date;
 
   @ApiProperty({
-    example: '2026-01-15T00:00:00.000Z',
+    type: String,
+    format: 'date-time',
+    example: '2026-01-15T23:59:59.999Z',
     description: 'Manual end date for the course access window.',
   })
   @IsDate()

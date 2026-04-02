@@ -6,14 +6,22 @@ import {
 } from '@nestjs/common';
 import type { AuthCaller } from '../../../core/users/types/auth-caller.type';
 import { UserRole } from '../../../../common/enums/user-role.enum';
+import { TeacherAssignmentsDalService } from '../../../academics/teacher-assignments/services/teacher-assignments-dal.service';
+import type { ClassSection } from '../../../academics/classes/entities/class.entity';
 import { CoursesDalService } from './dal.service';
+import { CoursesResponseMapperService } from './courses-response-mapper.service';
 import type { CreateCourseDto } from '../dto/create-course.dto';
 import type { UpdateCourseDto } from '../dto/update-course.dto';
+import type { CourseResponseDto } from '../dto/course-response.dto';
 import { Course } from '../entities/course.entity';
 
 @Injectable()
 export class CoursesService {
-  constructor(private readonly dal: CoursesDalService) {}
+  constructor(
+    private readonly dal: CoursesDalService,
+    private readonly teacherAssignmentsDal: TeacherAssignmentsDalService,
+    private readonly responseMapper: CoursesResponseMapperService,
+  ) {}
 
   private assertTeacherCreatesForSelf(dto: CreateCourseDto, caller: AuthCaller) {
     if (caller.role === UserRole.TEACHER && dto.teacherId !== caller.id) {
@@ -73,7 +81,55 @@ export class CoursesService {
     }
   }
 
-  async create(dto: CreateCourseDto, caller: AuthCaller): Promise<Course> {
+  /**
+   * Same rules as {@link TeacherAssignmentsService#create}: subject must be on the class grade
+   * curriculum, teacher must have an active specialization for the subject, and stage must be
+   * allowed when specialization is stage-limited.
+   */
+  private async assertCurriculumAndTeacherSpecialization(
+    schoolId: string,
+    teacherId: string,
+    subjectId: string,
+    cls: ClassSection,
+  ) {
+    const link = await this.teacherAssignmentsDal.findCurriculumLink(
+      cls.gradeLevelId,
+      subjectId,
+    );
+    if (!link) {
+      throw new BadRequestException(
+        'Subject is not part of this grade curriculum',
+      );
+    }
+
+    const spec = await this.teacherAssignmentsDal.findActiveSpecialization(
+      schoolId,
+      teacherId,
+      subjectId,
+    );
+    if (!spec) {
+      throw new BadRequestException(
+        'Teacher is not specialized for this subject',
+      );
+    }
+
+    const stageId = cls.gradeLevel?.stageId;
+    if (!stageId) {
+      throw new BadRequestException('Class grade level is missing stage');
+    }
+
+    if (
+      spec.allowedStageIds != null &&
+      spec.allowedStageIds.length > 0 &&
+      !spec.allowedStageIds.includes(stageId)
+    ) {
+      throw new BadRequestException(
+        'Teacher specialization does not cover this stage for the subject',
+      );
+    }
+  }
+
+  async create(dto: CreateCourseDto, caller: AuthCaller): Promise<CourseResponseDto> {
     const schoolId = this.resolveSchoolId(caller);
     this.assertTeacherCreatesForSelf(dto, caller);
 
@@ -98,6 +154,13 @@ export class CoursesService {
       context: 'Invalid course dates',
     });
 
+    await this.assertCurriculumAndTeacherSpecialization(
+      schoolId,
+      dto.teacherId,
+      subject.id,
+      cls,
+    );
+
     await this.dal.assertCanCreateCourse(schoolId, dto.classId, dto.subjectId);
 
     const course = new Course();
@@ -117,10 +180,17 @@ export class CoursesService {
     course.sequentialLearningEnabled = dto.sequentialLearningEnabled ?? false;
     course.isPublished = dto.isPublished ?? false;
 
-    return this.dal.saveCourse(course);
+    const saved = await this.dal.saveCourse(course);
+    const full = await this.dal.findCourseById(saved.id, schoolId);
+    if (!full) throw new NotFoundException('Course not found after create');
+    return this.responseMapper.toCourseResponse(full);
   }
 
-  async update(courseId: string, dto: UpdateCourseDto, caller: AuthCaller) {
+  async update(
+    courseId: string,
+    dto: UpdateCourseDto,
+    caller: AuthCaller,
+  ): Promise<CourseResponseDto> {
     const schoolId = this.resolveSchoolId(caller);
 
     const course = await this.dal.findCourseById(courseId, schoolId);
@@ -199,8 +269,19 @@ export class CoursesService {
       this.assertDatesInOrder(nextStartDate, nextEndDate);
     }
 
-    // Persist changes.
-    return this.dal.saveCourse(course);
+    const classForValidation =
+      cls ?? (await this.dal.findClass(nextClassId, schoolId));
+    await this.assertCurriculumAndTeacherSpecialization(
+      schoolId,
+      nextTeacherId,
+      nextSubjectId,
+      classForValidation,
+    );
+
+    const saved = await this.dal.saveCourse(course);
+    const full = await this.dal.findCourseById(saved.id, schoolId);
+    if (!full) throw new NotFoundException('Course not found after update');
+    return this.responseMapper.toCourseResponse(full);
   }
 
   async delete(courseId: string, caller: AuthCaller) {
@@ -225,14 +306,15 @@ export class CoursesService {
   async listBySubject(
     subjectId: string,
     caller: AuthCaller,
-  ): Promise<Course[]> {
+  ): Promise<CourseResponseDto[]> {
     const schoolId = this.resolveSchoolId(caller);
     await this.dal.findSubject(subjectId, schoolId);
 
     const teacherId =
       caller.role === UserRole.TEACHER ? caller.id : undefined;
-    return this.dal.findCoursesBySubject(schoolId, subjectId, {
+    const rows = await this.dal.findCoursesBySubject(schoolId, subjectId, {
       teacherId,
     });
+    return this.responseMapper.toCourseResponseList(rows);
   }
 }

@@ -2,8 +2,8 @@
  * Seeds 2 schools, super_admin, school_admin users, stages, grade levels,
  * academic years, teachers, students, classes, sample enrollments,
  * subjects, grade–subject links, assessment profiles,
- * LMS courses (one per class × curriculum subject), and references
- * teacher specializations / teacher assignments in seed-data.ts.
+ * LMS courses (one per class × curriculum subject), teacher_subject_specializations
+ * rows from {@link SEED_TEACHER_SPECIALIZATIONS}, and teacher assignments in seed-data.ts.
  *
  * Usage (from `schools-backend`):
  *   npm run seed
@@ -761,6 +761,107 @@ Create the schema first, then run this script again:
       }
     }
 
+    // ─── Teacher subject specializations (matches TeacherAssignmentsService rules) ───
+
+    type SpecCand = { nationalId: string; allowedStageIds: string[] | null };
+    const specCandidatesBySchoolSubject = new Map<string, SpecCand[]>();
+
+    function resolveAllowedStageIdsForSeed(
+      schoolCode: string,
+      row: (typeof SEED_TEACHER_SPECIALIZATIONS)[number],
+    ): string[] | null {
+      const names =
+        row.restrictToStageNamesEn && row.restrictToStageNamesEn.length > 0
+          ? [...row.restrictToStageNamesEn]
+          : row.restrictToStageNameEn != null && row.restrictToStageNameEn !== ''
+            ? [row.restrictToStageNameEn]
+            : [];
+      if (names.length === 0) return null;
+      const ids: string[] = [];
+      for (const n of names) {
+        const sid = stageKeyToId.get(`${schoolCode}:${n}`);
+        if (sid) ids.push(sid);
+        else {
+          console.warn(
+            `Seed specialization: unknown stage "${n}" for ${schoolCode}`,
+          );
+        }
+      }
+      return ids.length > 0 ? ids : null;
+    }
+
+    for (const row of SEED_TEACHER_SPECIALIZATIONS) {
+      const sk = `${row.schoolCode}:${row.subjectCode}`;
+      if (!specCandidatesBySchoolSubject.has(sk)) {
+        specCandidatesBySchoolSubject.set(sk, []);
+      }
+      specCandidatesBySchoolSubject.get(sk)!.push({
+        nationalId: row.teacherNationalId,
+        allowedStageIds: resolveAllowedStageIdsForSeed(row.schoolCode, row),
+      });
+    }
+
+    let teacherSpecsTableMissing = false;
+    try {
+      await client.query(
+        'SELECT 1 FROM teacher_subject_specializations LIMIT 1',
+      );
+    } catch (e: any) {
+      if (e.code === '42P01') {
+        teacherSpecsTableMissing = true;
+        console.warn(
+          '\nSkipping teacher_subject_specializations seed: table does not exist. Run migrations, then npm run seed again.',
+        );
+      } else {
+        throw e;
+      }
+    }
+
+    if (
+      !teacherSpecsTableMissing &&
+      !academicYearsTableMissing
+    ) {
+      let specUpserted = 0;
+      for (const row of SEED_TEACHER_SPECIALIZATIONS) {
+        const schoolId = codeToSchoolId.get(row.schoolCode);
+        const teacherId = nationalIdToUserId.get(row.teacherNationalId);
+        const subjectId = subjectKeyToId.get(
+          `${row.schoolCode}:${row.subjectCode}`,
+        );
+        if (!schoolId || !teacherId || !subjectId) {
+          console.warn(
+            `Skip specialization seed: unresolved ${row.schoolCode} ${row.subjectCode} ${row.teacherNationalId}`,
+          );
+          continue;
+        }
+        const allowed = resolveAllowedStageIdsForSeed(row.schoolCode, row);
+        const ex = await client.query(
+          `SELECT id FROM teacher_subject_specializations
+           WHERE school_id = $1 AND teacher_id = $2 AND subject_id = $3 AND deleted_at IS NULL`,
+          [schoolId, teacherId, subjectId],
+        );
+        if (ex.rows.length > 0) {
+          await client.query(
+            `UPDATE teacher_subject_specializations
+             SET allowed_stage_ids = $1::text[], updated_at = NOW()
+             WHERE id = $2`,
+            [allowed, ex.rows[0].id],
+          );
+        } else {
+          await client.query(
+            `INSERT INTO teacher_subject_specializations (
+               school_id, teacher_id, subject_id, allowed_stage_ids, created_at, updated_at
+             ) VALUES ($1, $2, $3, $4::text[], NOW(), NOW())`,
+            [schoolId, teacherId, subjectId, allowed],
+          );
+        }
+        specUpserted += 1;
+      }
+      console.log(
+        `\nTeacher specializations: upserted ${specUpserted} row(s) into teacher_subject_specializations.`,
+      );
+    }
+
     // ─── LMS courses (one per class × curriculum subject for that grade) ───
 
     let coursesTableMissing = false;
@@ -791,14 +892,6 @@ Create the schema first, then run this script again:
         gradeCurriculumSubjects.get(gk)!.add(link.subjectCode);
       }
 
-      const teachersBySchool = new Map<string, string[]>();
-      for (const t of SEED_TEACHERS) {
-        if (!teachersBySchool.has(t.schoolCode)) {
-          teachersBySchool.set(t.schoolCode, []);
-        }
-        teachersBySchool.get(t.schoolCode)!.push(t.nationalId);
-      }
-
       let lmsInserted = 0;
       let lmsSkipped = 0;
       let courseSeq = 0;
@@ -821,8 +914,9 @@ Create the schema first, then run this script again:
           continue;
         }
 
-        const teacherNids = teachersBySchool.get(clsRow.schoolCode) ?? [];
-        if (teacherNids.length === 0) continue;
+        const stageId = stageKeyToId.get(
+          `${clsRow.schoolCode}:${clsRow.stageName}`,
+        );
 
         const yearRow = SEED_ACADEMIC_YEARS.find(
           (y) => y.schoolCode === clsRow.schoolCode,
@@ -857,8 +951,31 @@ Create the schema first, then run this script again:
             continue;
           }
 
+          const specList =
+            specCandidatesBySchoolSubject.get(
+              `${clsRow.schoolCode}:${subjectCode}`,
+            ) ?? [];
+          const eligible = specList.filter((c) => {
+            if (
+              c.allowedStageIds == null ||
+              c.allowedStageIds.length === 0
+            ) {
+              return true;
+            }
+            return (
+              stageId != null && c.allowedStageIds.includes(stageId)
+            );
+          });
+          if (eligible.length === 0) {
+            console.warn(
+              `Skip LMS course: no teacher specialization for ${subjectCode} (${clsRow.schoolCode}, stage ${clsRow.stageName})`,
+            );
+            courseSeq += 1;
+            continue;
+          }
+
           const teacherNid =
-            teacherNids[courseSeq % teacherNids.length] ?? teacherNids[0];
+            eligible[courseSeq % eligible.length]!.nationalId;
           const teacherId = nationalIdToUserId.get(teacherNid);
           if (!teacherId) {
             console.warn(
