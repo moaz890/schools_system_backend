@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Course } from '../entities/course.entity';
 import type { CourseContentStructureDto } from '../../course-content/dto/course-content-structure-response.dto';
+import type { LocalizedStringDto } from '../../../../common/i18n/localized-string.dto';
 import {
   CourseAcademicYearSnippetDto,
   CourseClassSnippetDto,
@@ -31,8 +32,8 @@ export class CoursesResponseMapperService {
       classId: course.classId,
       subjectId: course.subjectId,
       teacherId: course.teacherId,
-      description: course.description as Record<string, string> | null,
-      objectives: course.objectives as Record<string, string> | null,
+      description: course.description as unknown as LocalizedStringDto | null,
+      objectives: course.objectives as unknown as LocalizedStringDto | null,
       durationLabel: course.durationLabel,
       startDate: course.startDate,
       endDate: course.endDate,
@@ -56,7 +57,7 @@ export class CoursesResponseMapperService {
     if (!t) return null;
     return {
       id: t.id,
-      name: t.name as Record<string, string>,
+      name: t.name as unknown as LocalizedStringDto,
       avatarUrl: t.avatarUrl ?? null,
     };
   }
@@ -67,7 +68,7 @@ export class CoursesResponseMapperService {
     return {
       id: s.id,
       code: s.code,
-      name: s.name as Record<string, string>,
+      name: s.name as unknown as LocalizedStringDto,
     };
   }
 
@@ -77,7 +78,7 @@ export class CoursesResponseMapperService {
 
     const academicYear: CourseAcademicYearSnippetDto = {
       id: c.academicYear.id,
-      name: c.academicYear.name as Record<string, string>,
+      name: c.academicYear.name as unknown as LocalizedStringDto,
       startDate: c.academicYear.startDate,
       endDate: c.academicYear.endDate,
       isCurrent: c.academicYear.isCurrent,
@@ -85,14 +86,14 @@ export class CoursesResponseMapperService {
 
     const gradeLevel: CourseGradeLevelSnippetDto = {
       id: c.gradeLevel.id,
-      name: c.gradeLevel.name as Record<string, string>,
+      name: c.gradeLevel.name as unknown as LocalizedStringDto,
       order: c.gradeLevel.order,
     };
 
     return {
       id: c.id,
       sectionLetter: c.sectionLetter,
-      name: c.name as Record<string, string>,
+      name: c.name as unknown as LocalizedStringDto,
       gradeLevel,
       academicYear,
     };

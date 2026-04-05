@@ -98,9 +98,9 @@ export class CourseResponseDto {
 
   @ApiPropertyOptional({
     nullable: true,
-    type: LocalizedStringDto
+    type: LocalizedStringDto,
   })
-  description: Record<string, string> | null;
+  description: LocalizedStringDto | null;
 
   @ApiPropertyOptional({
     nullable: true,

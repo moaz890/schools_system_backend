@@ -23,6 +23,6 @@ import { CourseContentItemsService } from './services/course-content-items.servi
     CourseContentLessonsService,
     CourseContentItemsService,
   ],
-  exports: [CourseContentSharedService],
+  exports: [CourseContentSharedService, CourseContentDalService],
 })
 export class CourseContentModule {}

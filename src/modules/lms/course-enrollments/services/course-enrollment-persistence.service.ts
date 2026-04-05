@@ -29,6 +29,19 @@ export class CourseEnrollmentPersistenceService {
     });
   }
 
+  async findActiveEnrollment(
+    studentId: string,
+    courseId: string,
+  ): Promise<CourseEnrollment | null> {
+    return this.courseEnrollmentRepo.findOne({
+      where: {
+        studentId,
+        courseId,
+        status: CourseEnrollmentStatus.ACTIVE,
+      },
+    });
+  }
+
   /**
    * All non–soft-deleted mandatory catalog courses for the class (same school).
    */
