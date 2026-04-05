@@ -55,8 +55,11 @@ import { LmsModule } from './modules/lms/lms.module';
     LmsModule,
 
     // Coming soon:
-    // AcademicsModule, LmsModule, AssessmentsModule
-    // GradingModule, AttendanceModule, SchedulingModule, CommunicationModule
+    // AssessmentsModule
+    // GradingModule
+    // AttendanceModule
+    // SchedulingModule
+    // CommunicationModule
   ],
   providers: [
     {

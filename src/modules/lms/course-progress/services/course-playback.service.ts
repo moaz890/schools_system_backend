@@ -12,7 +12,10 @@ import { CourseEnrollmentPersistenceService } from '../../course-enrollments/ser
 import { VideoStreamingStrategyFactory } from '../../video-streaming/video-streaming-strategy.factory';
 import type { VideoStreamConfigResponseDto } from '../../video-streaming/dto/video-stream-config-response.dto';
 import { coerceVideoPayload } from '../../video-streaming/types/video-content-payload.type';
-import { ContentItemProgressWriteService } from './content-item-progress-write.service';
+import { ContentItemProgressPersistenceService } from './content-item-progress-persistence.service';
+import { LessonProgressCompletionSyncService } from './lesson-progress-completion-sync.service';
+import { LessonProgressPersistenceService } from './lesson-progress-persistence.service';
+import { LessonSequentialAccessService } from './lesson-sequential-access.service';
 import type { PatchVideoProgressDto } from '../dto/patch-video-progress.dto';
 import type { VideoProgressResponseDto } from '../dto/video-progress-response.dto';
 
@@ -22,7 +25,10 @@ export class CoursePlaybackService {
     private readonly enrollmentPersistence: CourseEnrollmentPersistenceService,
     private readonly contentDal: CourseContentDalService,
     private readonly videoFactory: VideoStreamingStrategyFactory,
-    private readonly progressWrite: ContentItemProgressWriteService,
+    private readonly itemProgress: ContentItemProgressPersistenceService,
+    private readonly completionSync: LessonProgressCompletionSyncService,
+    private readonly sequential: LessonSequentialAccessService,
+    private readonly lessonProgressPersistence: LessonProgressPersistenceService,
   ) {}
 
   private resolveSchoolId(caller: AuthCaller): string {
@@ -32,7 +38,7 @@ export class CoursePlaybackService {
     return caller.schoolId;
   }
 
-  private async loadCourseOrThrow(courseId: string, schoolId: string) {
+  private async loadCourse(courseId: string, schoolId: string) {
     const course = await this.enrollmentPersistence.findCourseById(
       courseId,
       schoolId,
@@ -67,7 +73,7 @@ export class CoursePlaybackService {
     throw new ForbiddenException();
   }
 
-  private async assertStudentEnrolledOrThrow(
+  private async assertStudentEnrolled(
     studentId: string,
     courseId: string,
   ) {
@@ -87,11 +93,11 @@ export class CoursePlaybackService {
     caller: AuthCaller,
   ): Promise<VideoStreamConfigResponseDto> {
     const schoolId = this.resolveSchoolId(caller);
-    const course = await this.loadCourseOrThrow(courseId, schoolId);
+    const course = await this.loadCourse(courseId, schoolId);
     this.assertStreamViewAccess(course, caller);
 
     if (caller.role === UserRole.STUDENT) {
-      await this.assertStudentEnrolledOrThrow(caller.id, courseId);
+      await this.assertStudentEnrolled(caller.id, courseId);
     }
 
     const item = await this.contentDal.findContentItemInCourse(
@@ -119,7 +125,7 @@ export class CoursePlaybackService {
     }
 
     const schoolId = this.resolveSchoolId(caller);
-    const course = await this.loadCourseOrThrow(courseId, schoolId);
+    const course = await this.loadCourse(courseId, schoolId);
 
     if (!course.isPublished) {
       throw new ForbiddenException(
@@ -127,7 +133,7 @@ export class CoursePlaybackService {
       );
     }
 
-    const enrollment = await this.assertStudentEnrolledOrThrow(
+    const enrollment = await this.assertStudentEnrolled(
       caller.id,
       courseId,
     );
@@ -145,6 +151,23 @@ export class CoursePlaybackService {
       );
     }
 
+    await this.sequential.assertLessonReachable(
+      course,
+      courseId,
+      item.lessonId,
+      enrollment.id,
+    );
+
+    const lpRow = await this.lessonProgressPersistence.findByEnrollmentAndLesson(
+      enrollment.id,
+      item.lessonId,
+    );
+    if (!lpRow?.startedAt) {
+      throw new BadRequestException(
+        'Start the lesson before reporting video progress',
+      );
+    }
+
     const meta = coerceVideoPayload(item.payload);
     let seconds = dto.secondsWatched;
     if (
@@ -155,10 +178,18 @@ export class CoursePlaybackService {
       seconds = Math.min(seconds, cap);
     }
 
-    return this.progressWrite.applyMonotonicMax({
+    const result = await this.itemProgress.applyMonotonicMax({
       courseEnrollmentId: enrollment.id,
       contentItemId: item.id,
       reportedSeconds: seconds,
     });
+
+    await this.completionSync.recalculateAndSave(
+      courseId,
+      enrollment.id,
+      item.lessonId,
+    );
+
+    return result;
   }
 }

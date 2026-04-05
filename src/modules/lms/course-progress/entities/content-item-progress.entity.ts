@@ -30,4 +30,8 @@ export class ContentItemProgress extends BaseEntity {
 
   @Column({ name: 'video_seconds_watched_max', type: 'int', default: 0 })
   videoSecondsWatchedMax: number;
+
+  /** Set when the student explicitly acknowledges static / link content, or video without reliable duration. */
+  @Column({ name: 'acknowledged_at', type: 'timestamptz', nullable: true })
+  acknowledgedAt: Date | null;
 }

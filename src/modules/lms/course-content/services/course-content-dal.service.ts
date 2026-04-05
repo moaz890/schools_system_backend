@@ -37,6 +37,13 @@ export class CourseContentDalService {
     });
   }
 
+  findLessonWithContentItems(courseId: string, lessonId: string) {
+    return this.lessonRepo.findOne({
+      where: { id: lessonId, courseId },
+      relations: ['contentItems'],
+    });
+  }
+
   findItemForLesson(lessonId: string, itemId: string) {
     return this.itemRepo.findOne({
       where: { id: itemId, lessonId },

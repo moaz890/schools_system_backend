@@ -27,7 +27,7 @@ import { ReorderContentItemsDto } from './dto/reorder-content-items.dto';
 
 @ApiTags('LMS Course content')
 @ApiBearerAuth('access-token')
-@Controller('courses/:courseId/content')
+@Controller('courses/:courseId')
 export class CourseContentController {
   constructor(
     private readonly units: CourseContentUnitsService,

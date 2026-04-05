@@ -14,6 +14,8 @@ export interface VideoContentPayload {
   /** iframe / deep link for external hosts */
   externalUrl?: string;
   provider?: 'youtube' | 'vimeo' | 'generic';
+  /** Fraction of duration that counts as “watched” for completion (default 0.9 server-side). */
+  completionWatchRatio?: number;
 }
 
 export function coerceVideoPayload(
@@ -30,5 +32,9 @@ export function coerceVideoPayload(
     externalUrl:
       typeof p.externalUrl === 'string' ? p.externalUrl : undefined,
     provider: p.provider as VideoContentPayload['provider'],
+    completionWatchRatio:
+      typeof p.completionWatchRatio === 'number'
+        ? p.completionWatchRatio
+        : undefined,
   };
 }
