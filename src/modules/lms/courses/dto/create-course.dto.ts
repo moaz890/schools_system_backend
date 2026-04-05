@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDate,
+  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -11,6 +12,7 @@ import {
   IsUUID,
 } from 'class-validator';
 import { LocalizedStringDto } from '../../../../common/i18n/localized-string.dto';
+import { CourseCatalogEnrollmentType } from '../../enums/course-catalog-enrollment-type.enum';
 
 export class CreateCourseDto {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
@@ -79,4 +81,14 @@ export class CreateCourseDto {
   @IsOptional()
   @IsBoolean()
   isPublished?: boolean;
+
+  @ApiPropertyOptional({
+    enum: CourseCatalogEnrollmentType,
+    default: CourseCatalogEnrollmentType.MANDATORY,
+    description:
+      'Mandatory: all class students are auto-enrolled (including when the course is unpublished). Elective: manual enrollment later.',
+  })
+  @IsOptional()
+  @IsEnum(CourseCatalogEnrollmentType)
+  enrollmentType?: CourseCatalogEnrollmentType;
 }

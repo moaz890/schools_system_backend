@@ -25,6 +25,12 @@ import { CoursesService } from './services/courses.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import {
+  ContentItemSnippetDto,
+  CourseContentStructureDto,
+  CourseLessonSnippetDto,
+  CourseUnitSnippetDto,
+} from '../course-content/dto/course-content-structure-response.dto';
+import {
   CourseAcademicYearSnippetDto,
   CourseClassSnippetDto,
   CourseGradeLevelSnippetDto,
@@ -41,6 +47,10 @@ import {
   CourseClassSnippetDto,
   CourseGradeLevelSnippetDto,
   CourseAcademicYearSnippetDto,
+  CourseContentStructureDto,
+  CourseUnitSnippetDto,
+  CourseLessonSnippetDto,
+  ContentItemSnippetDto,
 )
 @ApiBearerAuth('access-token')
 @Controller('courses')

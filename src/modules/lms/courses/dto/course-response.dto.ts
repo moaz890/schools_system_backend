@@ -1,4 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CourseContentStructureDto } from '../../course-content/dto/course-content-structure-response.dto';
+import { LocalizedStringDto } from 'src/common/i18n/localized-string.dto';
 
 /** Assigned teacher: display fields only (no credentials or national id). */
 export class CourseTeacherSnippetDto {
@@ -7,10 +9,9 @@ export class CourseTeacherSnippetDto {
 
   @ApiProperty({
     example: { en: 'Ahmed Rashid', ar: 'أحمد راشد' },
-    type: 'object',
-    additionalProperties: { type: 'string' },
+    type: LocalizedStringDto  
   })
-  name: Record<string, string>;
+  name: LocalizedStringDto;
 
   @ApiPropertyOptional({ nullable: true, example: null })
   avatarUrl: string | null;
@@ -25,10 +26,9 @@ export class CourseSubjectSnippetDto {
 
   @ApiProperty({
     example: { en: 'Mathematics', ar: 'الرياضيات' },
-    type: 'object',
-    additionalProperties: { type: 'string' },
+    type: LocalizedStringDto,
   })
-  name: Record<string, string>;
+  name: LocalizedStringDto;
 }
 
 export class CourseGradeLevelSnippetDto {
@@ -36,10 +36,9 @@ export class CourseGradeLevelSnippetDto {
   id: string;
 
   @ApiProperty({
-    type: 'object',
-    additionalProperties: { type: 'string' },
+    type: LocalizedStringDto,
   })
-  name: Record<string, string>;
+  name: LocalizedStringDto;
 
   @ApiProperty({ example: 3 })
   order: number;
@@ -50,10 +49,9 @@ export class CourseAcademicYearSnippetDto {
   id: string;
 
   @ApiProperty({
-    type: 'object',
-    additionalProperties: { type: 'string' },
+    type: LocalizedStringDto,
   })
-  name: Record<string, string>;
+  name: LocalizedStringDto;
 
   @ApiProperty({ type: String, format: 'date-time' })
   startDate: Date;
@@ -74,10 +72,9 @@ export class CourseClassSnippetDto {
   sectionLetter: string;
 
   @ApiProperty({
-    type: 'object',
-    additionalProperties: { type: 'string' },
+    type: LocalizedStringDto,
   })
-  name: Record<string, string>;
+  name: LocalizedStringDto;
 
   @ApiProperty({ type: CourseGradeLevelSnippetDto })
   gradeLevel: CourseGradeLevelSnippetDto;
@@ -101,17 +98,15 @@ export class CourseResponseDto {
 
   @ApiPropertyOptional({
     nullable: true,
-    type: 'object',
-    additionalProperties: { type: 'string' },
+    type: LocalizedStringDto
   })
   description: Record<string, string> | null;
 
   @ApiPropertyOptional({
     nullable: true,
-    type: 'object',
-    additionalProperties: { type: 'string' },
+    type: LocalizedStringDto
   })
-  objectives: Record<string, string> | null;
+  objectives: LocalizedStringDto | null;
 
   @ApiPropertyOptional({ nullable: true })
   durationLabel: string | null;
@@ -142,4 +137,11 @@ export class CourseResponseDto {
 
   @ApiProperty({ type: CourseClassSnippetDto })
   classSection: CourseClassSnippetDto;
+
+  @ApiPropertyOptional({
+    type: () => CourseContentStructureDto,
+    description:
+      'Units, root lessons, and content items (only on GET /courses/:id)',
+  })
+  structure?: CourseContentStructureDto;
 }

@@ -5,6 +5,8 @@ import { School } from '../../../core/schools/entities/school.entity';
 import { User } from '../../../core/users/entities/user.entity';
 import { ClassSection } from '../../../academics/classes/entities/class.entity';
 import { Subject } from '../../../academics/subjects/entities/subject.entity';
+import { CourseStructureKind } from '../../course-content/enums/course-structure-kind.enum';
+import { CourseCatalogEnrollmentType } from '../../enums/course-catalog-enrollment-type.enum';
 
 @Entity('courses')
 @Index('IDX_courses_school_class', ['schoolId', 'classId'])
@@ -68,6 +70,26 @@ export class Course extends BaseEntity {
 
   @Column({ name: 'is_published', type: 'boolean', default: false })
   isPublished: boolean;
+
+  /**
+   * Mandatory: auto-enroll all students in the class (via events).
+   * Elective: enrollment only through a future manual API (Phase 3+).
+   */
+  @Column({
+    name: 'enrollment_type',
+    type: 'varchar',
+    length: 24,
+    default: CourseCatalogEnrollmentType.MANDATORY,
+  })
+  enrollmentType: CourseCatalogEnrollmentType;
+
+  @Column({
+    name: 'structure_kind',
+    type: 'varchar',
+    length: 16,
+    nullable: true,
+  })
+  structureKind: CourseStructureKind | null;
 
   @Column({ name: 'teacher_id', type: 'uuid' })
   teacherId: string;

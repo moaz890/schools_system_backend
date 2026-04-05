@@ -5,6 +5,7 @@ import { AcademicYear } from '../../core/academic-years/entities/academic-year.e
 import { ClassSection } from '../../academics/classes/entities/class.entity';
 import { Subject } from '../../academics/subjects/entities/subject.entity';
 import { TeacherAssignmentsModule } from '../../academics/teacher-assignments/teacher-assignments.module';
+import { CourseContentModule } from '../course-content/course-content.module';
 import { Course } from './entities/course.entity';
 import { CoursesDalService } from './services/dal.service';
 import { CoursesService } from './services/courses.service';
@@ -15,6 +16,7 @@ import { CoursesController } from './courses.controller';
 @Module({
   imports: [
     TeacherAssignmentsModule,
+    CourseContentModule,
     TypeOrmModule.forFeature([
       Course,
       User,

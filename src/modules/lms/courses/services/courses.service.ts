@@ -4,16 +4,21 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AuthCaller } from '../../../core/users/types/auth-caller.type';
 import { UserRole } from '../../../../common/enums/user-role.enum';
 import { TeacherAssignmentsDalService } from '../../../academics/teacher-assignments/services/teacher-assignments-dal.service';
 import type { ClassSection } from '../../../academics/classes/entities/class.entity';
 import { CoursesDalService } from './dal.service';
 import { CoursesResponseMapperService } from './courses-response-mapper.service';
+import { CourseContentSharedService } from '../../course-content/services/course-content-shared.service';
 import type { CreateCourseDto } from '../dto/create-course.dto';
 import type { UpdateCourseDto } from '../dto/update-course.dto';
 import type { CourseResponseDto } from '../dto/course-response.dto';
 import { Course } from '../entities/course.entity';
+import { CourseCatalogEnrollmentType } from '../../enums/course-catalog-enrollment-type.enum';
+import { LMS_MANDATORY_COURSE_LINKED_TO_CLASS_EVENT } from '../../events/lms-events.constants';
+import { MandatoryCourseLinkedToClassEvent } from '../../events/mandatory-course-linked-to-class.event';
 
 @Injectable()
 export class CoursesService {
@@ -21,6 +26,8 @@ export class CoursesService {
     private readonly dal: CoursesDalService,
     private readonly teacherAssignmentsDal: TeacherAssignmentsDalService,
     private readonly responseMapper: CoursesResponseMapperService,
+    private readonly courseContentShared: CourseContentSharedService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   private assertTeacherCreatesForSelf(dto: CreateCourseDto, caller: AuthCaller) {
@@ -179,8 +186,21 @@ export class CoursesService {
     course.endDate = dto.endDate;
     course.sequentialLearningEnabled = dto.sequentialLearningEnabled ?? false;
     course.isPublished = dto.isPublished ?? false;
+    course.enrollmentType =
+      dto.enrollmentType ?? CourseCatalogEnrollmentType.MANDATORY;
 
     const saved = await this.dal.saveCourse(course);
+
+    if (saved.enrollmentType === CourseCatalogEnrollmentType.MANDATORY) {
+      this.eventEmitter.emit(
+        LMS_MANDATORY_COURSE_LINKED_TO_CLASS_EVENT,
+        new MandatoryCourseLinkedToClassEvent(
+          schoolId,
+          saved.id,
+          saved.classId,
+        ),
+      );
+    }
     const full = await this.dal.findCourseById(saved.id, schoolId);
     if (!full) throw new NotFoundException('Course not found after create');
     return this.responseMapper.toCourseResponse(full);
@@ -195,6 +215,8 @@ export class CoursesService {
 
     const course = await this.dal.findCourseById(courseId, schoolId);
     if (!course) throw new NotFoundException('Course not found');
+
+    const previousEnrollmentType = course.enrollmentType;
 
     this.assertTeacherCanUpdateTeacherId(dto, caller);
     this.assertTeacherOwnsCourse(caller, course);
@@ -261,6 +283,8 @@ export class CoursesService {
     if (dto.sequentialLearningEnabled !== undefined)
       course.sequentialLearningEnabled = dto.sequentialLearningEnabled;
     if (dto.isPublished !== undefined) course.isPublished = dto.isPublished;
+    if (dto.enrollmentType !== undefined)
+      course.enrollmentType = dto.enrollmentType;
 
     // Dates validation (if updated).
     if (dto.startDate !== undefined || dto.endDate !== undefined) {
@@ -279,6 +303,19 @@ export class CoursesService {
     );
 
     const saved = await this.dal.saveCourse(course);
+    if (
+      saved.enrollmentType === CourseCatalogEnrollmentType.MANDATORY &&
+      previousEnrollmentType !== CourseCatalogEnrollmentType.MANDATORY
+    ) {
+      this.eventEmitter.emit(
+        LMS_MANDATORY_COURSE_LINKED_TO_CLASS_EVENT,
+        new MandatoryCourseLinkedToClassEvent(
+          schoolId,
+          saved.id,
+          saved.classId,
+        ),
+      );
+    }
     const full = await this.dal.findCourseById(saved.id, schoolId);
     if (!full) throw new NotFoundException('Course not found after update');
     return this.responseMapper.toCourseResponse(full);
@@ -292,12 +329,19 @@ export class CoursesService {
     await this.dal.softDeleteCourse(course);
   }
 
-  async get(courseId: string, caller: AuthCaller): Promise<Course> {
+  async get(
+    courseId: string,
+    caller: AuthCaller,
+  ): Promise<CourseResponseDto> {
     const schoolId = this.resolveSchoolId(caller);
     const course = await this.dal.findCourseById(courseId, schoolId);
     if (!course) throw new NotFoundException('Course not found');
     this.assertTeacherOwnsCourse(caller, course);
-    return course;
+    const structure = await this.courseContentShared.getStructureDto(
+      courseId,
+      schoolId,
+    );
+    return this.responseMapper.toCourseResponse(course, structure);
   }
 
   /**

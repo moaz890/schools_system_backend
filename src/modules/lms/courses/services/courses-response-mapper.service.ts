@@ -1,5 +1,6 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Course } from '../entities/course.entity';
+import type { CourseContentStructureDto } from '../../course-content/dto/course-content-structure-response.dto';
 import {
   CourseAcademicYearSnippetDto,
   CourseClassSnippetDto,
@@ -11,7 +12,10 @@ import {
 
 @Injectable()
 export class CoursesResponseMapperService {
-  toCourseResponse(course: Course): CourseResponseDto {
+  toCourseResponse(
+    course: Course,
+    structure?: CourseContentStructureDto,
+  ): CourseResponseDto {
     const teacher = this.toTeacherSnippet(course);
     const subject = this.toSubjectSnippet(course);
     const classSection = this.toClassSnippet(course);
@@ -39,6 +43,7 @@ export class CoursesResponseMapperService {
       teacher,
       subject,
       classSection,
+      ...(structure !== undefined ? { structure } : {}),
     };
   }
 
